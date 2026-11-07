@@ -1,0 +1,3 @@
+# Copie para .dev.vars (não versionado).
+# Token de uso único para criar o primeiro super admin via POST /api/v1/setup.
+SETUP_TOKEN=troque-este-token-local

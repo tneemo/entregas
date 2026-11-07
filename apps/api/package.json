@@ -1,0 +1,26 @@
+{
+  "name": "@entregas/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "db:gerar": "drizzle-kit generate",
+    "db:migrar:local": "wrangler d1 migrations apply DB --local",
+    "tipos": "wrangler types",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "deploy": "npm run build -w @entregas/painel && wrangler deploy"
+  },
+  "dependencies": {
+    "@entregas/shared": "*",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.17",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.6.0",
+    "drizzle-kit": "^0.31.11",
+    "wrangler": "^4.158.0"
+  }
+}
