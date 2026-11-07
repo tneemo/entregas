@@ -15,6 +15,13 @@
       "when": 1794069447007,
       "tag": "0001_cidades_iniciais",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794072219516,
+      "tag": "0002_pedidos",
+      "breakpoints": true
     }
   ]
 }

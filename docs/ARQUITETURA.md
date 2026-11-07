@@ -243,7 +243,7 @@ Monorepo com **npm workspaces**; TypeScript em tudo; testes com Vitest (`@cloudf
 | Fase | Entrega |
 |---|---|
 | **0 — Fundação** ✅ | Monorepo, Worker + D1, auth, camada multi-tenant com testes de isolamento, cadastro de empresas/usuários/vínculos, convites, painel (login, empresas, equipe, aceite de convite) |
-| **1 — Núcleo** | Pedidos pelo painel, despacho manual, app do motoboy (turno, status, código + foto), link de rastreio + botão WhatsApp, mapa ao vivo (Durable Objects), fotos de comprovante (R2) |
+| **1 — Núcleo** | **Parte 1 ✅** pedidos pelo painel, ciclo de status com histórico, despacho manual, código de entrega (bloqueia após 5 erros), cadastro de clientes pelo telefone, endereço da empresa como coleta padrão, CEP via ViaCEP. **Parte 2** app do motoboy (turno, status, código + foto). **Parte 3** link de rastreio, mapa ao vivo (Durable Objects), fotos de comprovante (R2) |
 | **2 — Dinheiro** | Cobrança na entrega, acerto, remuneração, frete por km, comissão + fatura mensal |
 | **3 — Entradas** | Link público de pedido, portal do cliente contratante, API pública + webhooks |
 | **4 — Integrações** | iFood (requer cadastro e homologação no portal de desenvolvedores do iFood), PDVs, despacho automático, roteirização multi-paradas, WhatsApp API oficial, Pix dinâmico |

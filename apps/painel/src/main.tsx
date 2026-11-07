@@ -10,6 +10,10 @@ import { Inicio } from './telas/Inicio.tsx';
 import { Layout } from './telas/Layout.tsx';
 import { Equipe } from './telas/Equipe.tsx';
 import { Empresas } from './telas/Empresas.tsx';
+import { Pedidos } from './telas/Pedidos.tsx';
+import { NovoPedido } from './telas/NovoPedido.tsx';
+import { PedidoDetalhe } from './telas/PedidoDetalhe.tsx';
+import { DadosEmpresa } from './telas/DadosEmpresa.tsx';
 import { TelaPublica } from './telas/Entrar.tsx';
 
 const consultas = new QueryClient({
@@ -40,7 +44,11 @@ createRoot(document.getElementById('raiz')!).render(
             <Route path="/plataforma/empresas" element={<Empresas />} />
           </Route>
           <Route path="/e/:empresaId" element={<Layout />}>
+            <Route path="pedidos" element={<Pedidos />} />
+            <Route path="pedidos/novo" element={<NovoPedido />} />
+            <Route path="pedidos/:pedidoId" element={<PedidoDetalhe />} />
             <Route path="equipe" element={<Equipe />} />
+            <Route path="empresa" element={<DadosEmpresa />} />
           </Route>
           <Route path="*" element={<NaoEncontrada />} />
         </Routes>

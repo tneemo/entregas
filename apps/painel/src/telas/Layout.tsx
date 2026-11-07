@@ -15,9 +15,19 @@ function Navegacao({ eu, empresaId }: { eu: EuResposta; empresaId?: string }) {
   return (
     <nav aria-label="Principal" className="flex flex-col gap-1">
       {vinculo && vinculo.papel !== 'motoboy' && (
-        <NavLink to={`/e/${vinculo.empresa.id}/equipe`} className={item}>
-          Equipe
-        </NavLink>
+        <>
+          <NavLink to={`/e/${vinculo.empresa.id}/pedidos`} className={item}>
+            Pedidos
+          </NavLink>
+          <NavLink to={`/e/${vinculo.empresa.id}/equipe`} className={item}>
+            Equipe
+          </NavLink>
+          {vinculo.papel === 'admin' && (
+            <NavLink to={`/e/${vinculo.empresa.id}/empresa`} className={item}>
+              Dados da empresa
+            </NavLink>
+          )}
+        </>
       )}
       {!empresaId && eu.usuario.superAdmin && (
         <NavLink to="/plataforma/empresas" className={item}>
@@ -43,7 +53,7 @@ function SeletorContexto({ eu, atual }: { eu: EuResposta; atual: string }) {
           const destino = e.target.value;
           if (destino === PLATAFORMA) return navegar('/plataforma/empresas');
           lembrarEmpresa(destino);
-          navegar(`/e/${destino}/equipe`);
+          navegar(`/e/${destino}/pedidos`);
         }}
         className="min-h-10 rounded border border-linha bg-white px-2"
       >

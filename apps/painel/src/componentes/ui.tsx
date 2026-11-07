@@ -116,3 +116,28 @@ export function Situacao({ ativo, rotulo }: { ativo: boolean; rotulo: string }) 
 export function dataCurta(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
+
+export function AreaTexto({
+  rotulo,
+  erro,
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { rotulo: string; erro?: string }) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        {rotulo}
+      </label>
+      <textarea
+        id={id}
+        rows={3}
+        aria-invalid={Boolean(erro)}
+        {...props}
+        className={`rounded border bg-white px-3 py-2 text-base outline-none focus:border-mercosul ${
+          erro ? 'border-aluguel' : 'border-linha'
+        }`}
+      />
+      {erro && <p className="text-sm text-aluguel">{erro}</p>}
+    </div>
+  );
+}

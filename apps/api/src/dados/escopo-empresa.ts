@@ -6,11 +6,14 @@
 // tabelas com empresa_id diretamente; os testes de isolamento cobrem este arquivo.
 
 import { and, desc, eq, gt, isNull } from 'drizzle-orm';
+import type { z } from 'zod';
 import type {
   ConvitePendenteResposta,
   DadosAtualizarMembro,
+  DadosEmpresaResposta,
   MembroResposta,
   Papel,
+  schemaAtualizarDadosEmpresa,
 } from '@entregas/shared';
 import type { Db } from '../db/index.ts';
 import { cidades, convites, empresas, usuarios, vinculos } from '../db/schema.ts';
@@ -32,6 +35,17 @@ export function escopoEmpresa(db: Db, ctx: ContextoEmpresa) {
     nome: usuarios.nome,
     email: usuarios.email,
     telefone: usuarios.telefone,
+  };
+
+  const empresa = async (): Promise<DadosEmpresaResposta> => {
+    const linha = await db
+      .select({ empresa: empresas, cidade: cidades })
+      .from(empresas)
+      .innerJoin(cidades, eq(cidades.id, empresas.cidadeId))
+      .where(eq(empresas.id, empresaId))
+      .get();
+    if (!linha) throw naoEncontrado('Empresa não encontrada.');
+    return { ...empresaResposta(linha.empresa, linha.cidade), endereco: linha.empresa.endereco ?? null };
   };
 
   const buscarMembro = (vinculoId: string) =>
@@ -62,15 +76,11 @@ export function escopoEmpresa(db: Db, ctx: ContextoEmpresa) {
   return {
     ctx,
 
-    async empresa() {
-      const linha = await db
-        .select({ empresa: empresas, cidade: cidades })
-        .from(empresas)
-        .innerJoin(cidades, eq(cidades.id, empresas.cidadeId))
-        .where(eq(empresas.id, empresaId))
-        .get();
-      if (!linha) throw naoEncontrado('Empresa não encontrada.');
-      return empresaResposta(linha.empresa, linha.cidade);
+    empresa,
+
+    async atualizarDados(dados: z.output<typeof schemaAtualizarDadosEmpresa>): Promise<DadosEmpresaResposta> {
+      await db.update(empresas).set(dados).where(eq(empresas.id, empresaId));
+      return empresa();
     },
 
     async listarMembros(): Promise<MembroResposta[]> {

@@ -14,7 +14,7 @@ export function Inicio() {
   const doPainel = eu.vinculos.filter((v) => v.papel !== 'motoboy');
   const lembrada = doPainel.find((v) => v.empresa.id === ultimaEmpresa());
   const destino = lembrada ?? doPainel[0];
-  if (destino) return <Navigate to={`/e/${destino.empresa.id}/equipe`} replace />;
+  if (destino) return <Navigate to={`/e/${destino.empresa.id}/pedidos`} replace />;
   if (eu.usuario.superAdmin) return <Navigate to="/plataforma/empresas" replace />;
 
   return (

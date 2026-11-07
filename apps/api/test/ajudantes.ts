@@ -142,3 +142,22 @@ export async function empresaComEquipe(superAdmin: Cliente) {
 
   return { empresa, admin, despachante, motoboy };
 }
+
+export function endereco(logradouro = 'Rua Paraná', numero = '1500', bairro = 'Centro') {
+  return { cep: '85810-010', logradouro, numero, bairro, cidade: 'Cascavel', uf: 'PR' };
+}
+
+/** Cria um pedido pela central; `extras` sobrescreve campos do corpo. */
+export async function novoPedido(central: Cliente, empresaId: string, extras: Record<string, unknown> = {}) {
+  const r = await central.post(`/empresas/${empresaId}/pedidos`, {
+    coleta: { endereco: endereco('Rua Paraná', '1500') },
+    entrega: { nome: 'Ana Cliente', telefone: novoCelular(), endereco: endereco('Av. Brasil', '2000', 'Neva') },
+    formaPagamento: 'dinheiro',
+    valorACobrarCentavos: 4590,
+    trocoParaCentavos: 5000,
+    taxaEntregaCentavos: 700,
+    ...extras,
+  });
+  if (r.status !== 201) throw new Error(`criar pedido falhou (${r.status}): ${JSON.stringify(r.corpo)}`);
+  return r.corpo as import('@entregas/shared').PedidoDetalhe;
+}

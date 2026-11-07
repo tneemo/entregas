@@ -1,10 +1,13 @@
 import type { Context } from 'hono';
-import { z } from 'zod';
+import type { z } from 'zod';
 import { ErroApi, camposInvalidos } from './erros.ts';
 
 /**
  * Lê e valida o corpo JSON. Exigir `application/json` também protege contra CSRF:
  * navegadores não enviam JSON entre origens sem preflight CORS, que esta API não libera.
+ *
+ * Erros por campo usam o caminho completo ("entrega.endereco.numero"), para o
+ * formulário marcar o campo exato.
  */
 export async function lerCorpo<T extends z.ZodType>(c: Context, schema: T): Promise<z.output<T>> {
   if (!c.req.header('content-type')?.includes('application/json')) {
@@ -18,11 +21,16 @@ export async function lerCorpo<T extends z.ZodType>(c: Context, schema: T): Prom
   }
   const resultado = schema.safeParse(bruto);
   if (!resultado.success) {
-    const { fieldErrors, formErrors } = z.flattenError(resultado.error);
-    const campos = Object.fromEntries(
-      Object.entries(fieldErrors).filter((par): par is [string, string[]] => Array.isArray(par[1])),
-    );
-    throw camposInvalidos(campos, formErrors[0] ?? 'Confira os dados informados.');
+    const campos: Record<string, string[]> = {};
+    let geral: string | undefined;
+    for (const problema of resultado.error.issues) {
+      if (problema.path.length === 0) {
+        geral ??= problema.message;
+        continue;
+      }
+      (campos[problema.path.join('.')] ??= []).push(problema.message);
+    }
+    throw camposInvalidos(campos, geral ?? 'Confira os dados informados.');
   }
   return resultado.data;
 }

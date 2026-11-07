@@ -9,6 +9,7 @@ import { rotasSetup } from './rotas/setup.ts';
 import { rotasAuth } from './rotas/auth.ts';
 import { rotasAdmin } from './rotas/admin.ts';
 import { rotasEmpresa } from './rotas/empresa.ts';
+import { rotasPedidos } from './rotas/pedidos.ts';
 import { rotasConvites } from './rotas/convites.ts';
 
 const app = new Hono<AppEnv>().basePath('/api/v1');
@@ -24,6 +25,7 @@ app.get('/saude', (c) => c.json({ ok: true }));
 app.route('/setup', rotasSetup);
 app.route('/auth', rotasAuth);
 app.route('/admin', rotasAdmin);
+app.route('/empresas/:empresaId/pedidos', rotasPedidos);
 app.route('/empresas/:empresaId', rotasEmpresa);
 app.route('/convites', rotasConvites);
 

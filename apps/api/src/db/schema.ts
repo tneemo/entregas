@@ -1,17 +1,21 @@
 // Esquema do banco (D1/SQLite).
 //
 // Regra multi-tenant: toda tabela com dados de uma empresa tem `empresa_id`
-// e só é acessada pelo escopo em src/dados/escopo-empresa.ts.
+// e só é acessada pelos escopos em src/dados/escopo-*.ts.
 // Tabelas globais: cidades, empresas, usuarios, sessoes, falhas_login.
 
 import { sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import {
+  ACOES_PEDIDO,
+  FORMAS_PAGAMENTO,
   PAPEIS,
   STATUS_EMPRESA,
+  STATUS_PEDIDO,
   STATUS_VINCULO,
   TIPOS_EMPRESA,
   TIPOS_VINCULO,
+  type Endereco,
 } from '@entregas/shared';
 
 const id = () =>
@@ -59,6 +63,8 @@ export const empresas = sqliteTable(
       .references(() => cidades.id),
     telefone: text('telefone'),
     email: text('email'),
+    /** Endereço da loja/base: sugestão padrão de coleta nos pedidos. */
+    endereco: text('endereco', { mode: 'json' }).$type<Endereco>(),
     status: text('status', { enum: STATUS_EMPRESA }).notNull().default('ativa'),
     criadoEm: criadoEm(),
     atualizadoEm: atualizadoEm(),
@@ -160,4 +166,106 @@ export const convites = sqliteTable(
     uniqueIndex('convites_token_unq').on(t.tokenHash),
     index('convites_empresa_idx').on(t.empresaId),
   ],
+);
+
+/** Destinatários já atendidos, para preencher o pedido pelo telefone. */
+export const clientes = sqliteTable(
+  'clientes',
+  {
+    id: id(),
+    empresaId: text('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    nome: text('nome').notNull(),
+    telefone: text('telefone').notNull(),
+    /** Último endereço usado. */
+    endereco: text('endereco', { mode: 'json' }).$type<Endereco>(),
+    criadoEm: criadoEm(),
+    atualizadoEm: atualizadoEm(),
+  },
+  (t) => [uniqueIndex('clientes_empresa_telefone_unq').on(t.empresaId, t.telefone)],
+);
+
+export const pedidos = sqliteTable(
+  'pedidos',
+  {
+    id: id(),
+    empresaId: text('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    /** Número curto e sequencial dentro da empresa ("pedido 152"). */
+    numero: integer('numero').notNull(),
+    status: text('status', { enum: STATUS_PEDIDO }).notNull().default('pendente'),
+    motoboyVinculoId: text('motoboy_vinculo_id').references(() => vinculos.id),
+    clienteId: text('cliente_id').references(() => clientes.id),
+    formaPagamento: text('forma_pagamento', { enum: FORMAS_PAGAMENTO }).notNull(),
+    valorACobrarCentavos: integer('valor_a_cobrar_centavos').notNull(),
+    trocoParaCentavos: integer('troco_para_centavos'),
+    taxaEntregaCentavos: integer('taxa_entrega_centavos').notNull().default(0),
+    observacoes: text('observacoes'),
+    /** Código de 4 dígitos que o destinatário informa ao receber. */
+    codigoEntrega: text('codigo_entrega').notNull(),
+    tentativasCodigo: integer('tentativas_codigo').notNull().default(0),
+    /** Último motivo de falha ou cancelamento. */
+    motivo: text('motivo'),
+    criadoPor: text('criado_por')
+      .notNull()
+      .references(() => usuarios.id),
+    criadoEm: criadoEm(),
+    atualizadoEm: atualizadoEm(),
+    concluidoEm: integer('concluido_em', { mode: 'timestamp_ms' }),
+  },
+  (t) => [
+    uniqueIndex('pedidos_empresa_numero_unq').on(t.empresaId, t.numero),
+    index('pedidos_empresa_status_idx').on(t.empresaId, t.status),
+    index('pedidos_motoboy_status_idx').on(t.motoboyVinculoId, t.status),
+  ],
+);
+
+/** Pontos do trajeto: hoje uma coleta e uma entrega; preparado para várias entregas. */
+export const paradas = sqliteTable(
+  'paradas',
+  {
+    id: id(),
+    empresaId: text('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    pedidoId: text('pedido_id')
+      .notNull()
+      .references(() => pedidos.id),
+    ordem: integer('ordem').notNull(),
+    tipo: text('tipo', { enum: ['coleta', 'entrega'] }).notNull(),
+    nome: text('nome'),
+    telefone: text('telefone'),
+    endereco: text('endereco', { mode: 'json' }).$type<Endereco>().notNull(),
+  },
+  (t) => [uniqueIndex('paradas_pedido_ordem_unq').on(t.pedidoId, t.ordem)],
+);
+
+/** Histórico imutável: quem mudou o quê, quando (e onde, quando vier do app). */
+export const eventosPedido = sqliteTable(
+  'eventos_pedido',
+  {
+    id: id(),
+    empresaId: text('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    pedidoId: text('pedido_id')
+      .notNull()
+      .references(() => pedidos.id),
+    acao: text('acao', { enum: ['criar', ...ACOES_PEDIDO] }).notNull(),
+    de: text('de', { enum: STATUS_PEDIDO }),
+    para: text('para', { enum: STATUS_PEDIDO }).notNull(),
+    usuarioId: text('usuario_id')
+      .notNull()
+      .references(() => usuarios.id),
+    papel: text('papel', { enum: PAPEIS }).notNull(),
+    motivo: text('motivo'),
+    /** Texto extra para o histórico, ex.: nome do motoboy atribuído. */
+    detalhe: text('detalhe'),
+    latitude: real('latitude'),
+    longitude: real('longitude'),
+    criadoEm: criadoEm(),
+  },
+  (t) => [index('eventos_pedido_idx').on(t.pedidoId, t.criadoEm)],
 );

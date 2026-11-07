@@ -8,6 +8,7 @@ import {
   validarCpf,
 } from './validacao.ts';
 import { PAPEIS, STATUS_EMPRESA, STATUS_VINCULO, TIPOS_EMPRESA, TIPOS_VINCULO } from './papeis.ts';
+import { ACOES_PEDIDO, FORMAS_PAGAMENTO } from './pedidos.ts';
 
 // Campos reutilizáveis ------------------------------------------------------
 
@@ -121,3 +122,107 @@ export type DadosCriarEmpresa = z.input<typeof schemaCriarEmpresa>;
 export type DadosCriarConvite = z.input<typeof schemaCriarConvite>;
 export type DadosAtualizarMembro = z.input<typeof schemaAtualizarMembro>;
 export type DadosAceitarConviteNovaConta = z.input<typeof schemaAceitarConviteNovaConta>;
+
+// Endereços ------------------------------------------------------------------
+
+const textoOpcional = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => v || undefined)
+    .optional();
+
+export const schemaEndereco = z.object({
+  cep: z
+    .string()
+    .transform(somenteDigitos)
+    .refine((v) => v === '' || v.length === 8, 'CEP tem 8 dígitos.')
+    .transform((v) => v || undefined)
+    .optional(),
+  logradouro: z.string().trim().min(2, 'Informe a rua.').max(160),
+  numero: z.string().trim().min(1, 'Informe o número (ou s/n).').max(20),
+  complemento: textoOpcional(80),
+  bairro: z.string().trim().min(2, 'Informe o bairro.').max(80),
+  cidade: z.string().trim().min(2, 'Informe a cidade.').max(80),
+  uf: z
+    .string()
+    .trim()
+    .length(2, 'UF tem 2 letras.')
+    .transform((v) => v.toUpperCase()),
+  referencia: textoOpcional(160),
+});
+
+export type Endereco = z.output<typeof schemaEndereco>;
+
+export const schemaAtualizarDadosEmpresa = z
+  .object({
+    nomeFantasia: nome.optional(),
+    telefone: campoTelefone.nullable().optional(),
+    email: campoEmail.nullable().optional(),
+    endereco: schemaEndereco.optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, 'Nada para atualizar.');
+
+// Pedidos --------------------------------------------------------------------
+
+const centavos = (rotulo: string) =>
+  z
+    .number({ error: `Informe ${rotulo}.` })
+    .int()
+    .min(0, `${rotulo[0]!.toUpperCase()}${rotulo.slice(1)} não pode ser negativo.`)
+    .max(10_000_00, 'Valor acima do limite de R$ 10.000,00.');
+
+export const schemaCriarPedido = z
+  .object({
+    coleta: z.object({
+      nome: textoOpcional(120),
+      telefone: campoTelefone.optional(),
+      endereco: schemaEndereco,
+    }),
+    entrega: z.object({
+      nome,
+      telefone: campoTelefone,
+      endereco: schemaEndereco,
+    }),
+    formaPagamento: z.enum(FORMAS_PAGAMENTO),
+    /** Quanto o motoboy cobra na porta. Zero quando já está pago. */
+    valorACobrarCentavos: centavos('o valor a cobrar'),
+    /** Só para dinheiro: o cliente vai pagar com uma nota deste valor. */
+    trocoParaCentavos: centavos('o troco').optional(),
+    taxaEntregaCentavos: centavos('a taxa de entrega').default(0),
+    observacoes: textoOpcional(500),
+    /** Já atribui ao motoboy na criação. */
+    motoboyVinculoId: z.string().min(1).optional(),
+  })
+  .superRefine((p, ctx) => {
+    if (p.formaPagamento === 'pago' && p.valorACobrarCentavos !== 0) {
+      ctx.addIssue({ code: 'custom', path: ['valorACobrarCentavos'], message: 'Pedido já pago não tem valor a cobrar.' });
+    }
+    if (p.formaPagamento !== 'pago' && p.valorACobrarCentavos === 0) {
+      ctx.addIssue({ code: 'custom', path: ['valorACobrarCentavos'], message: 'Informe o valor a cobrar na entrega.' });
+    }
+    if (p.trocoParaCentavos !== undefined) {
+      if (p.formaPagamento !== 'dinheiro') {
+        ctx.addIssue({ code: 'custom', path: ['trocoParaCentavos'], message: 'Troco só vale para pagamento em dinheiro.' });
+      } else if (p.trocoParaCentavos < p.valorACobrarCentavos) {
+        ctx.addIssue({ code: 'custom', path: ['trocoParaCentavos'], message: 'O troco precisa ser para um valor maior que o pedido.' });
+      }
+    }
+  });
+
+export const schemaAcaoPedido = z.object({
+  codigo: z
+    .string()
+    .trim()
+    .regex(/^\d{4}$/, 'O código tem 4 dígitos.')
+    .optional(),
+  motivo: z.string().trim().min(3, 'Descreva o motivo.').max(300).optional(),
+  motoboyVinculoId: z.string().min(1).optional(),
+});
+
+export const schemaParamAcao = z.enum(ACOES_PEDIDO);
+
+export type DadosCriarPedido = z.input<typeof schemaCriarPedido>;
+export type DadosAcaoPedido = z.input<typeof schemaAcaoPedido>;
+export type DadosAtualizarDadosEmpresa = z.input<typeof schemaAtualizarDadosEmpresa>;

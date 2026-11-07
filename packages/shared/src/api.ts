@@ -7,6 +7,7 @@ import type {
   TipoEmpresa,
   TipoVinculo,
 } from './papeis.ts';
+import type { AcaoPedido, FormaPagamento, StatusPedido } from './pedidos.ts';
 
 export interface ErroResposta {
   erro: { codigo: string; mensagem: string; campos?: Record<string, string[]> };
@@ -94,4 +95,82 @@ export interface MembroResposta {
   tipoVinculo: TipoVinculo | null;
   entrouEm: string;
   usuario: { id: string; nome: string; email: string | null; telefone: string | null };
+}
+
+// Pedidos --------------------------------------------------------------------
+
+export interface EnderecoResposta {
+  cep?: string;
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  referencia?: string;
+}
+
+export interface DadosEmpresaResposta extends EmpresaResposta {
+  endereco: EnderecoResposta | null;
+}
+
+export interface MotoboyResumo {
+  vinculoId: string;
+  nome: string;
+  telefone: string | null;
+  pedidosAtivos: number;
+}
+
+export interface ParadaResposta {
+  tipo: 'coleta' | 'entrega';
+  nome: string | null;
+  telefone: string | null;
+  endereco: EnderecoResposta;
+}
+
+export interface PedidoResumo {
+  id: string;
+  numero: number;
+  status: StatusPedido;
+  criadoEm: string;
+  atualizadoEm: string;
+  concluidoEm: string | null;
+  destino: { nome: string | null; bairro: string; logradouro: string; numero: string };
+  motoboy: { vinculoId: string; nome: string } | null;
+  formaPagamento: FormaPagamento;
+  valorACobrarCentavos: number;
+}
+
+export interface EventoPedidoResposta {
+  id: string;
+  acao: AcaoPedido | 'criar';
+  de: StatusPedido | null;
+  para: StatusPedido;
+  autor: string;
+  papel: Papel;
+  motivo: string | null;
+  detalhe: string | null;
+  criadoEm: string;
+}
+
+export interface PedidoDetalhe extends PedidoResumo {
+  coleta: ParadaResposta;
+  entrega: ParadaResposta;
+  trocoParaCentavos: number | null;
+  taxaEntregaCentavos: number;
+  observacoes: string | null;
+  motivo: string | null;
+  /** Só a central vê o código; o motoboy precisa recebê-lo do cliente. */
+  codigoEntrega?: string;
+  codigoBloqueado: boolean;
+  /** O que quem fez a requisição pode fazer agora. */
+  acoes: AcaoPedido[];
+  eventos: EventoPedidoResposta[];
+}
+
+export interface ClienteResposta {
+  id: string;
+  nome: string;
+  telefone: string;
+  endereco: EnderecoResposta | null;
 }

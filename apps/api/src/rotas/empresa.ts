@@ -3,20 +3,39 @@
 
 import { Hono } from 'hono';
 import {
+  normalizarTelefone,
   podeConvidar,
+  schemaAtualizarDadosEmpresa,
   schemaAtualizarMembro,
   schemaCriarConvite,
 } from '@entregas/shared';
 import type { AppEnv } from '../tipos.ts';
-import { ErroApi, proibido } from '../erros.ts';
+import { ErroApi, naoEncontrado, proibido } from '../erros.ts';
 import { lerCorpo } from '../validar.ts';
 import { exigirEmpresa } from '../middleware/empresa.ts';
 import { escopoEmpresa } from '../dados/escopo-empresa.ts';
+import { escopoPedidos } from '../dados/escopo-pedidos.ts';
 
 const escopo = (c: { var: AppEnv['Variables'] }) => escopoEmpresa(c.var.db, c.var.empresa);
 
 export const rotasEmpresa = new Hono<AppEnv>()
   .get('/', exigirEmpresa(), async (c) => c.json(await escopo(c).empresa()))
+
+  .patch('/', exigirEmpresa('admin'), async (c) => {
+    const dados = await lerCorpo(c, schemaAtualizarDadosEmpresa);
+    return c.json(await escopo(c).atualizarDados(dados));
+  })
+
+  .get('/motoboys', exigirEmpresa('admin', 'despachante'), async (c) =>
+    c.json(await escopoPedidos(c.var.db, c.var.empresa).motoboys()),
+  )
+
+  /** Preenche o pedido a partir do telefone de quem já recebeu antes. */
+  .get('/clientes/telefone/:telefone', exigirEmpresa('admin', 'despachante'), async (c) => {
+    const telefone = normalizarTelefone(c.req.param('telefone'));
+    if (!telefone) throw naoEncontrado('Cliente não encontrado.');
+    return c.json(await escopoPedidos(c.var.db, c.var.empresa).clientePorTelefone(telefone));
+  })
 
   .get('/membros', exigirEmpresa('admin', 'despachante'), async (c) =>
     c.json(await escopo(c).listarMembros()),
