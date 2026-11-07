@@ -63,9 +63,11 @@ export function useDadosEmpresa(empresaId: string) {
   });
 }
 
+/** A API já ordena quem está em turno primeiro. */
 export function rotuloMotoboy(m: MotoboyResumo) {
-  if (m.pedidosAtivos === 0) return `${m.nome} (livre)`;
-  return `${m.nome} (${m.pedidosAtivos} em andamento)`;
+  if (!m.emTurno) return `${m.nome} (fora do turno)`;
+  if (m.pedidosAtivos === 0) return `${m.nome} (em turno, livre)`;
+  return `${m.nome} (em turno, ${m.pedidosAtivos} em andamento)`;
 }
 
 /** Endereço como o formulário guarda: tudo texto, inclusive vazio. */

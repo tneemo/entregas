@@ -22,8 +22,17 @@
     }
   ],
 
+  // Fotos de comprovante de entrega (wrangler r2 bucket create entregas-fotos).
+  "r2_buckets": [{ "binding": "FOTOS", "bucket_name": "entregas-fotos" }],
+
+  // Todo dia às 03:00 de Cascavel (06:00 UTC): apaga pontos de GPS antigos (LGPD).
+  "triggers": { "crons": ["0 6 * * *"] },
+
   "vars": {
-    "AMBIENTE": "desenvolvimento"
+    "AMBIENTE": "desenvolvimento",
+    // Origens que podem chamar a API pelo navegador com Bearer (só o app rodando na web em desenvolvimento).
+    // Vazio em produção: o app Android não usa CORS.
+    "ORIGENS_APP": ""
   }
   // Segredos (wrangler secret put): SETUP_TOKEN — usado uma única vez para criar o primeiro super admin.
 }

@@ -224,5 +224,30 @@ export const schemaAcaoPedido = z.object({
 export const schemaParamAcao = z.enum(ACOES_PEDIDO);
 
 export type DadosCriarPedido = z.input<typeof schemaCriarPedido>;
-export type DadosAcaoPedido = z.input<typeof schemaAcaoPedido>;
+export type DadosAcaoPedido = z.input<typeof schemaAcaoPedidoComPosicao>;
 export type DadosAtualizarDadosEmpresa = z.input<typeof schemaAtualizarDadosEmpresa>;
+
+const coordenadas = {
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+};
+
+/** Ações vindas do app levam a posição do motoboy no momento (vai para o histórico). */
+export const schemaAcaoPedidoComPosicao = schemaAcaoPedido.extend(coordenadas);
+
+export const schemaPosicoes = z.object({
+  pontos: z
+    .array(
+      z.object({
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+        precisao: z.number().min(0).max(100_000).optional(),
+        velocidade: z.number().min(0).max(100).optional(),
+        registradoEm: z.iso.datetime({ offset: true }),
+      }),
+    )
+    .min(1)
+    .max(100, 'Envie no máximo 100 pontos por vez.'),
+});
+
+export type DadosPosicoes = z.input<typeof schemaPosicoes>;

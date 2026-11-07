@@ -159,3 +159,13 @@ export const ROTULOS_EVENTO: Record<AcaoPedido | 'criar', string> = {
   concluir_devolucao: 'Devolvido à origem',
   cancelar: 'Pedido cancelado',
 };
+
+export const TIPOS_FOTO = ['coleta', 'entrega', 'falha'] as const;
+export type TipoFoto = (typeof TIPOS_FOTO)[number];
+
+/** Fotos aceitas pela API (tamanho máximo, em bytes). */
+export const FOTO_MAX_BYTES = 5 * 1024 * 1024;
+export const FOTO_TIPOS_CONTEUDO = ['image/jpeg', 'image/png', 'image/webp'] as const;
+
+/** Por quanto tempo guardamos os pontos de GPS brutos (LGPD: necessidade). */
+export const RETENCAO_POSICOES_DIAS = 90;

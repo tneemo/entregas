@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "-w", "@entregas/painel"],
       "port": 5173
+    },
+    {
+      "name": "motoboy-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "web", "-w", "@entregas/motoboy"],
+      "port": 8081
     }
   ]
 }

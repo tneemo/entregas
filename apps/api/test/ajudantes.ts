@@ -38,6 +38,21 @@ export class Cliente {
   get<T = any>(caminho: string) {
     return this.req<T>('GET', caminho);
   }
+
+  /** Envia bytes crus (ex.: foto) e devolve a resposta sem interpretar. */
+  enviarBytes(caminho: string, bytes: Uint8Array, tipoConteudo: string) {
+    const headers: Record<string, string> = { 'content-type': tipoConteudo };
+    if (this.cookie) headers.cookie = this.cookie;
+    if (this.token) headers.authorization = `Bearer ${this.token}`;
+    return exports.default.fetch(`https://entregas.teste/api/v1${caminho}`, { method: 'POST', headers, body: bytes });
+  }
+
+  buscarBytes(caminho: string) {
+    const headers: Record<string, string> = {};
+    if (this.cookie) headers.cookie = this.cookie;
+    if (this.token) headers.authorization = `Bearer ${this.token}`;
+    return exports.default.fetch(`https://entregas.teste/api/v1${caminho}`, { headers });
+  }
   post<T = any>(caminho: string, corpo: unknown = {}) {
     return this.req<T>('POST', caminho, corpo);
   }

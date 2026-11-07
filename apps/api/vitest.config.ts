@@ -9,7 +9,11 @@ export default defineConfig(async () => {
       cloudflareTest({
         wrangler: { configPath: './wrangler.jsonc' },
         miniflare: {
-          bindings: { TEST_MIGRATIONS: migracoes, SETUP_TOKEN: 'token-de-teste' },
+          bindings: {
+            TEST_MIGRATIONS: migracoes,
+            SETUP_TOKEN: 'token-de-teste',
+            ORIGENS_APP: 'http://localhost:8081',
+          },
         },
       }),
     ],

@@ -7,7 +7,7 @@ import type {
   TipoEmpresa,
   TipoVinculo,
 } from './papeis.ts';
-import type { AcaoPedido, FormaPagamento, StatusPedido } from './pedidos.ts';
+import type { AcaoPedido, FormaPagamento, StatusPedido, TipoFoto } from './pedidos.ts';
 
 export interface ErroResposta {
   erro: { codigo: string; mensagem: string; campos?: Record<string, string[]> };
@@ -119,6 +119,8 @@ export interface MotoboyResumo {
   nome: string;
   telefone: string | null;
   pedidosAtivos: number;
+  /** Com turno aberto nesta empresa agora. */
+  emTurno: boolean;
 }
 
 export interface ParadaResposta {
@@ -166,6 +168,7 @@ export interface PedidoDetalhe extends PedidoResumo {
   /** O que quem fez a requisição pode fazer agora. */
   acoes: AcaoPedido[];
   eventos: EventoPedidoResposta[];
+  fotos: FotoResposta[];
 }
 
 export interface ClienteResposta {
@@ -173,4 +176,18 @@ export interface ClienteResposta {
   nome: string;
   telefone: string;
   endereco: EnderecoResposta | null;
+}
+
+export interface FotoResposta {
+  id: string;
+  tipo: TipoFoto;
+  criadoEm: string;
+  /** Caminho da API que devolve a imagem (exige login). */
+  url: string;
+}
+
+export interface TurnoResposta {
+  turno: { id: string; iniciadoEm: string } | null;
+  /** Turno aberto em outra empresa: o motoboy só trabalha para uma por vez. */
+  emOutraEmpresa: { empresaId: string; nomeFantasia: string } | null;
 }

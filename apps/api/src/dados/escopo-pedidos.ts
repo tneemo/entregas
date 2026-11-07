@@ -14,21 +14,31 @@ import {
   statusFinal,
   type AcaoPedido,
   type ClienteResposta,
+  type FotoResposta,
   type MotoboyResumo,
   type PedidoDetalhe,
   type PedidoResumo,
   type StatusPedido,
-  type schemaAcaoPedido,
+  type TipoFoto,
+  type schemaAcaoPedidoComPosicao,
   type schemaCriarPedido,
 } from '@entregas/shared';
 import type { z } from 'zod';
 import type { Db } from '../db/index.ts';
-import { clientes, eventosPedido, paradas, pedidos, usuarios, vinculos } from '../db/schema.ts';
+import { clientes, eventosPedido, fotosPedido, paradas, pedidos, turnos, usuarios, vinculos } from '../db/schema.ts';
 import type { ContextoEmpresa } from '../tipos.ts';
 import { ErroApi, camposInvalidos, naoEncontrado, proibido } from '../erros.ts';
 
 type DadosCriar = z.output<typeof schemaCriarPedido>;
-type DadosAcao = z.output<typeof schemaAcaoPedido>;
+type DadosAcao = z.output<typeof schemaAcaoPedidoComPosicao>;
+
+/** Assinaturas dos formatos aceitos: não basta o cabeçalho dizer que é imagem. */
+const ASSINATURAS: Record<string, (b: Uint8Array) => boolean> = {
+  'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  'image/png': (b) => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47,
+  'image/webp': (b) => String.fromCharCode(...b.slice(0, 4)) === 'RIFF' && String.fromCharCode(...b.slice(8, 12)) === 'WEBP',
+};
+const EXTENSAO: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 export type Situacao = 'ativos' | 'concluidos';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -120,7 +130,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     const linha = await consultaResumo().where(and(filtro, eq(pedidos.id, pedidoId))).get();
     if (!linha) throw naoEncontrado('Pedido não encontrado.');
 
-    const [pontos, eventos] = await Promise.all([
+    const [pontos, eventos, fotos] = await Promise.all([
       db
         .select()
         .from(paradas)
@@ -133,6 +143,12 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
         .innerJoin(usuarios, eq(usuarios.id, eventosPedido.usuarioId))
         .where(and(eq(eventosPedido.pedidoId, pedidoId), eq(eventosPedido.empresaId, empresaId)))
         .orderBy(asc(eventosPedido.criadoEm))
+        .all(),
+      db
+        .select()
+        .from(fotosPedido)
+        .where(and(eq(fotosPedido.pedidoId, pedidoId), eq(fotosPedido.empresaId, empresaId)))
+        .orderBy(asc(fotosPedido.criadoEm))
         .all(),
     ]);
 
@@ -167,6 +183,14 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
         detalhe: e.detalhe,
         criadoEm: e.criadoEm.toISOString(),
       })),
+      fotos: fotos.map(
+        (f): FotoResposta => ({
+          id: f.id,
+          tipo: f.tipo,
+          criadoEm: f.criadoEm.toISOString(),
+          url: `/api/v1/empresas/${empresaId}/pedidos/${pedidoId}/fotos/${f.id}`,
+        }),
+      ),
     };
   }
 
@@ -312,8 +336,8 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
         d1.prepare(atualizar.sql).bind(...atualizar.params),
         d1
           .prepare(
-            `INSERT INTO eventos_pedido (id, empresa_id, pedido_id, acao, de, para, usuario_id, papel, motivo, detalhe, criado_em)
-             SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE changes() = 1`,
+            `INSERT INTO eventos_pedido (id, empresa_id, pedido_id, acao, de, para, usuario_id, papel, motivo, detalhe, latitude, longitude, criado_em)
+             SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE changes() = 1`,
           )
           .bind(
             crypto.randomUUID(),
@@ -326,6 +350,8 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
             ctx.papel,
             dados.motivo ?? null,
             detalheEvento,
+            dados.latitude ?? null,
+            dados.longitude ?? null,
             agora.getTime(),
           ),
       ]);
@@ -342,6 +368,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
           nome: usuarios.nome,
           telefone: usuarios.telefone,
           pedidosAtivos: count(pedidos.id),
+          emTurno: sql<number>`EXISTS (SELECT 1 FROM ${turnos} WHERE ${turnos.vinculoId} = ${vinculos.id} AND ${turnos.encerradoEm} IS NULL)`.mapWith(Boolean).as('em_turno'),
         })
         .from(vinculos)
         .innerJoin(usuarios, eq(usuarios.id, vinculos.usuarioId))
@@ -351,8 +378,56 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
         )
         .where(and(eq(vinculos.empresaId, empresaId), eq(vinculos.papel, 'motoboy'), eq(vinculos.status, 'ativo')))
         .groupBy(vinculos.id, usuarios.nome, usuarios.telefone)
-        .orderBy(asc(usuarios.nome))
-        .all();
+        // Quem está em turno aparece primeiro na hora de despachar.
+        .orderBy(sql`em_turno DESC`, asc(usuarios.nome))
+        .all() as Promise<MotoboyResumo[]>;
+    },
+
+    async enviarFoto(
+      bucket: R2Bucket,
+      pedidoId: string,
+      tipo: TipoFoto,
+      tipoConteudo: string,
+      corpo: ArrayBuffer,
+    ): Promise<FotoResposta> {
+      const pedido = await db
+        .select({ id: pedidos.id })
+        .from(pedidos)
+        .where(and(visiveis(), eq(pedidos.id, pedidoId)))
+        .get();
+      if (!pedido) throw naoEncontrado('Pedido não encontrado.');
+
+      const confere = ASSINATURAS[tipoConteudo];
+      if (!confere || !confere(new Uint8Array(corpo.slice(0, 12)))) {
+        throw new ErroApi(415, 'imagem_invalida', 'Envie uma foto em JPEG, PNG ou WebP.');
+      }
+
+      const id = crypto.randomUUID();
+      const chave = `empresas/${empresaId}/pedidos/${pedidoId}/${id}.${EXTENSAO[tipoConteudo]}`;
+      await bucket.put(chave, corpo, { httpMetadata: { contentType: tipoConteudo } });
+      const foto = await db
+        .insert(fotosPedido)
+        .values({ id, empresaId, pedidoId, tipo, chave, tipoConteudo, tamanhoBytes: corpo.byteLength, enviadoPor: ctx.usuarioId })
+        .returning()
+        .get();
+      return {
+        id: foto.id,
+        tipo: foto.tipo,
+        criadoEm: foto.criadoEm.toISOString(),
+        url: `/api/v1/empresas/${empresaId}/pedidos/${pedidoId}/fotos/${foto.id}`,
+      };
+    },
+
+    /** Referência da foto, se o pedido estiver visível para quem pede. */
+    async obterFoto(pedidoId: string, fotoId: string) {
+      const linha = await db
+        .select({ chave: fotosPedido.chave, tipoConteudo: fotosPedido.tipoConteudo })
+        .from(fotosPedido)
+        .innerJoin(pedidos, eq(pedidos.id, fotosPedido.pedidoId))
+        .where(and(visiveis(), eq(fotosPedido.id, fotoId), eq(fotosPedido.pedidoId, pedidoId), eq(fotosPedido.empresaId, empresaId)))
+        .get();
+      if (!linha) throw naoEncontrado('Foto não encontrada.');
+      return linha;
     },
 
     async clientePorTelefone(telefone: string): Promise<ClienteResposta> {

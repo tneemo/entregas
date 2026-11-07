@@ -8,6 +8,7 @@ Decisões, pesquisa e roteiro em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 ```
 apps/api      Worker da Cloudflare (Hono + D1): API em /api/v1 e entrega do painel
 apps/painel   Painel web (React + Vite + Tailwind)
+apps/motoboy  App Android do motoboy (Expo + expo-router)
 packages/shared  Validações (CPF, CNPJ alfanumérico, telefone), schemas e tipos da API
 ```
 
@@ -35,6 +36,30 @@ O painel abre em http://localhost:5173 (a API roda em http://localhost:8787 e o 
 
 No primeiro acesso, abra **/configuracao-inicial** e use o `SETUP_TOKEN` do `.dev.vars` para criar o super admin.
 Depois: cadastre uma empresa, envie o link de convite ao administrador dela, e ele convida despachantes e motoboys.
+
+## App do motoboy (apps/motoboy, Expo)
+
+Para testar telas e fluxo no navegador (sem GPS em segundo plano nem câmera de verdade):
+
+```bash
+cp apps/motoboy/.env.exemplo apps/motoboy/.env
+```
+
+```bash
+npm run web -w @entregas/motoboy
+```
+
+Abre em http://localhost:8081 e fala com a API local (o `.dev.vars` libera essa origem via `ORIGENS_APP`).
+
+No celular Android, na mesma rede Wi-Fi do computador:
+
+1. Rode a API aceitando conexões da rede: `npm run dev:rede -w @entregas/api`
+2. Em `apps/motoboy/.env`, troque `EXPO_PUBLIC_API_URL` pelo IP do computador (ex.: `http://192.168.0.10:8787`)
+3. `npm run start -w @entregas/motoboy` e abra o QR code no app Expo Go
+
+O Expo Go roda quase tudo, mas **não faz GPS com a tela apagada**. Para isso é preciso um build de
+desenvolvimento do app: pelo EAS (`npx eas build --profile development --platform android`, exige conta
+gratuita na Expo) ou localmente com Android Studio (`npx expo run:android`).
 
 ## Testes
 

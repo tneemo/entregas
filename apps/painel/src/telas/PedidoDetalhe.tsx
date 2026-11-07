@@ -243,6 +243,28 @@ export function PedidoDetalhe() {
               <p className="whitespace-pre-line">{p.observacoes}</p>
             </section>
           )}
+          {p.fotos.length > 0 && (
+            <section className="flex flex-col gap-2" aria-labelledby="titulo-fotos">
+              <h2 id="titulo-fotos" className="text-xl">
+                Fotos do motoboy
+              </h2>
+              <ul className="flex flex-wrap gap-3">
+                {p.fotos.map((f) => (
+                  <li key={f.id}>
+                    <a href={f.url} target="_blank" rel="noreferrer" className="flex flex-col gap-1 text-sm text-concreto">
+                      <img
+                        src={f.url}
+                        alt={`Foto de ${f.tipo === 'falha' ? 'tentativa de entrega' : f.tipo} às ${horaCurta(f.criadoEm)}`}
+                        className="h-32 w-32 rounded border border-linha bg-white object-cover"
+                        loading="lazy"
+                      />
+                      {f.tipo === 'falha' ? 'Tentativa' : f.tipo === 'coleta' ? 'Coleta' : 'Entrega'}, {horaCurta(f.criadoEm)}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
 
         <aside className="flex flex-col gap-8">

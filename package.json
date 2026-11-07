@@ -14,8 +14,14 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "typescript": "6.0.3",
     "vitest": "4.1.12"
+  },
+  "overrides": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "engines": {
     "node": ">=22"

@@ -1,3 +1,5 @@
 # Copie para .dev.vars (não versionado).
 # Token de uso único para criar o primeiro super admin via POST /api/v1/setup.
 SETUP_TOKEN=troque-este-token-local
+# App do motoboy rodando na web (expo start --web) pode chamar a API local.
+ORIGENS_APP=http://localhost:8081

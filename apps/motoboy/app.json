@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Entregas Motoboy",
+    "slug": "entregas-motoboy",
+    "scheme": "entregasmotoboy",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "package": "br.com.entregas.motoboy",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "CAMERA"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Durante o turno, sua localização é enviada à empresa para acompanhar as entregas. Ao encerrar o turno, o envio para.",
+          "locationWhenInUsePermission": "Sua localização é usada para registrar onde cada etapa da entrega aconteceu.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "A câmera é usada para fotografar o comprovante de entrega.",
+          "photosPermission": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

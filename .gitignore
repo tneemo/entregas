@@ -7,3 +7,11 @@ dist/
 *.log
 .DS_Store
 coverage/
+
+# Expo
+.expo/
+apps/motoboy/.env
+expo-env.d.ts
+web-build/
+android/
+ios/

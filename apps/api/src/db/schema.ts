@@ -13,6 +13,7 @@ import {
   STATUS_EMPRESA,
   STATUS_PEDIDO,
   STATUS_VINCULO,
+  TIPOS_FOTO,
   TIPOS_EMPRESA,
   TIPOS_VINCULO,
   type Endereco,
@@ -268,4 +269,76 @@ export const eventosPedido = sqliteTable(
     criadoEm: criadoEm(),
   },
   (t) => [index('eventos_pedido_idx').on(t.pedidoId, t.criadoEm)],
+);
+
+/** Período em que o motoboy está trabalhando para uma empresa. GPS só é aceito com turno aberto. */
+export const turnos = sqliteTable(
+  'turnos',
+  {
+    id: id(),
+    empresaId: text('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    vinculoId: text('vinculo_id')
+      .notNull()
+      .references(() => vinculos.id),
+    /** Repetido do vínculo para garantir um turno aberto por pessoa, em qualquer empresa. */
+    usuarioId: text('usuario_id')
+      .notNull()
+      .references(() => usuarios.id),
+    iniciadoEm: integer('iniciado_em', { mode: 'timestamp_ms' }).notNull(),
+    encerradoEm: integer('encerrado_em', { mode: 'timestamp_ms' }),
+  },
+  (t) => [
+    uniqueIndex('turnos_um_aberto_por_usuario').on(t.usuarioId).where(sql`encerrado_em IS NULL`),
+    index('turnos_empresa_idx').on(t.empresaId, t.encerradoEm),
+  ],
+);
+
+/** Pontos de GPS brutos. Apagados após RETENCAO_POSICOES_DIAS (LGPD). */
+export const posicoes = sqliteTable(
+  'posicoes',
+  {
+    id: id(),
+    empresaId: text('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    turnoId: text('turno_id')
+      .notNull()
+      .references(() => turnos.id),
+    latitude: real('latitude').notNull(),
+    longitude: real('longitude').notNull(),
+    precisaoM: real('precisao_m'),
+    velocidadeMs: real('velocidade_ms'),
+    /** Hora do aparelho: pontos podem chegar atrasados quando o celular fica sem sinal. */
+    registradoEm: integer('registrado_em', { mode: 'timestamp_ms' }).notNull(),
+    recebidoEm: criadoEm(),
+  },
+  (t) => [
+    index('posicoes_turno_idx').on(t.turnoId, t.registradoEm),
+    index('posicoes_registrado_idx').on(t.registradoEm),
+  ],
+);
+
+/** Fotos de comprovante. O arquivo fica no R2; aqui só a referência. */
+export const fotosPedido = sqliteTable(
+  'fotos_pedido',
+  {
+    id: id(),
+    empresaId: text('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    pedidoId: text('pedido_id')
+      .notNull()
+      .references(() => pedidos.id),
+    tipo: text('tipo', { enum: TIPOS_FOTO }).notNull(),
+    chave: text('chave').notNull(),
+    tipoConteudo: text('tipo_conteudo').notNull(),
+    tamanhoBytes: integer('tamanho_bytes').notNull(),
+    enviadoPor: text('enviado_por')
+      .notNull()
+      .references(() => usuarios.id),
+    criadoEm: criadoEm(),
+  },
+  (t) => [index('fotos_pedido_idx').on(t.pedidoId)],
 );
