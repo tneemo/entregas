@@ -63,10 +63,68 @@ export class Cliente {
     return this.req<T>('DELETE', caminho);
   }
 
+  /** Abre um WebSocket como o navegador (mesma origem, com o cookie). Devolve a resposta se não abrir. */
+  async abrirWs(caminho: string, extras: Record<string, string> = {}) {
+    const headers: Record<string, string> = { upgrade: 'websocket', 'sec-fetch-site': 'same-origin', ...extras };
+    if (this.cookie) headers.cookie = this.cookie;
+    const resposta = await exports.default.fetch(`https://entregas.teste/api/v1${caminho}`, { headers });
+    return { status: resposta.status, conexao: resposta.webSocket ? new Conexao(resposta.webSocket) : null };
+  }
+
   async entrar(login: string, senha = SENHA) {
     const r = await this.post('/auth/entrar', { login, senha });
     if (r.status !== 200) throw new Error(`login falhou (${r.status}): ${JSON.stringify(r.corpo)}`);
     return r;
+  }
+}
+
+/** WebSocket de teste: guarda as mensagens que chegam e espera pela que interessa. */
+export class Conexao {
+  private fila: any[] = [];
+  fechou = false;
+
+  constructor(readonly ws: WebSocket) {
+    ws.accept();
+    ws.addEventListener('message', (e) => {
+      this.fila.push(JSON.parse(e.data as string));
+    });
+    ws.addEventListener('close', () => {
+      this.fechou = true;
+    });
+  }
+
+  /** Tira da fila a primeira mensagem que passa no filtro; espera até `ms` por ela. */
+  async esperar<T = any>(filtro: (m: any) => boolean = () => true, ms = 3000): Promise<T> {
+    const limite = Date.now() + ms;
+    for (;;) {
+      const i = this.fila.findIndex(filtro);
+      if (i >= 0) return this.fila.splice(i, 1)[0];
+      if (Date.now() > limite) throw new Error(`mensagem não chegou; na fila: ${JSON.stringify(this.fila)}`);
+      await new Promise((r) => setTimeout(r, 10));
+    }
+  }
+
+  /** Garante que nenhuma mensagem que passe no filtro chega em `ms`. */
+  async nenhuma(filtro: (m: any) => boolean = () => true, ms = 300) {
+    await new Promise((r) => setTimeout(r, ms));
+    const achou = this.fila.find(filtro);
+    if (achou) throw new Error(`não devia ter chegado: ${JSON.stringify(achou)}`);
+  }
+
+  async esperarFechar(ms = 3000) {
+    const limite = Date.now() + ms;
+    while (!this.fechou) {
+      if (Date.now() > limite) throw new Error('conexão não fechou');
+      await new Promise((r) => setTimeout(r, 10));
+    }
+  }
+
+  fechar() {
+    try {
+      this.ws.close(1000, 'fim do teste');
+    } catch {
+      // já fechada
+    }
   }
 }
 

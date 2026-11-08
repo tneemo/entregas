@@ -39,12 +39,31 @@ function Parada({ titulo, parada }: { titulo: string; parada: ParadaResposta }) 
   );
 }
 
-/** Código que o cliente informa ao motoboy, com envio pronto pelo WhatsApp. */
+/** Link de acompanhamento + código que o cliente informa ao motoboy, com envio pronto pelo WhatsApp. */
 function CodigoEntrega({ pedido, nomeEmpresa }: { pedido: Pedido; nomeEmpresa: string }) {
+  const [copiado, setCopiado] = useState(false);
   if (!pedido.codigoEntrega) return null;
   const tel = pedido.entrega.telefone?.replace(/\D/g, '');
   const primeiroNome = pedido.entrega.nome?.split(' ')[0] ?? '';
-  const mensagem = `Olá${primeiroNome ? `, ${primeiroNome}` : ''}! Seu pedido nº ${pedido.numero} da ${nomeEmpresa} vai sair para entrega. Quando receber, informe ao entregador o código ${pedido.codigoEntrega}.`;
+  const link = pedido.rastreio ? `${window.location.origin}${pedido.rastreio.caminho}` : null;
+  const mensagem = [
+    `Olá${primeiroNome ? `, ${primeiroNome}` : ''}! Seu pedido nº ${pedido.numero} da ${nomeEmpresa} vai sair para entrega.`,
+    link && `Acompanhe por aqui: ${link}`,
+    `Quando receber, informe ao entregador o código ${pedido.codigoEntrega}.`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  async function copiar() {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2_500);
+    } catch {
+      window.prompt('Copie o link de acompanhamento:', link);
+    }
+  }
 
   return (
     <section className="flex flex-col gap-3 border-l-4 border-mercosul bg-white p-4" aria-labelledby="titulo-codigo">
@@ -55,7 +74,8 @@ function CodigoEntrega({ pedido, nomeEmpresa }: { pedido: Pedido; nomeEmpresa: s
         {pedido.codigoEntrega}
       </p>
       <p className="text-sm text-concreto">
-        O cliente informa este código ao motoboy na entrega. O motoboy não vê o código no app.
+        O cliente informa este código ao motoboy na entrega. O motoboy não vê o código no app. Pelo link, o cliente
+        acompanha o pedido e vê o entregador no mapa quando ele sai para entrega.
         {pedido.codigoBloqueado && ' O motoboy errou o código 5 vezes; só a central pode confirmar agora.'}
       </p>
       {tel && (
@@ -65,8 +85,21 @@ function CodigoEntrega({ pedido, nomeEmpresa }: { pedido: Pedido; nomeEmpresa: s
           rel="noreferrer"
           className="inline-flex min-h-10 items-center self-start rounded-md bg-ok px-4 text-[15px] font-medium text-white hover:brightness-110"
         >
-          Enviar código ao cliente pelo WhatsApp
+          Enviar link e código pelo WhatsApp
         </a>
+      )}
+      {link && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <Botao variante="discreto" onClick={copiar}>
+            {copiado ? 'Link copiado' : 'Copiar link de acompanhamento'}
+          </Botao>
+          <a href={link} target="_blank" rel="noreferrer" className="text-mercosul underline-offset-2 hover:underline">
+            Ver como o cliente vê
+          </a>
+          <span role="status" className="sr-only">
+            {copiado ? 'Link copiado' : ''}
+          </span>
+        </div>
       )}
     </section>
   );
@@ -191,7 +224,8 @@ export function PedidoDetalhe() {
   const pedido = useQuery({
     queryKey: ['pedido', empresaId, pedidoId],
     queryFn: () => api<Pedido>(`/empresas/${empresaId}/pedidos/${pedidoId}`),
-    refetchInterval: 15_000,
+    // O tempo real avisa quando muda; isto é só uma rede de segurança.
+    refetchInterval: 60_000,
   });
 
   if (pedido.isLoading) return <p>Carregando pedido…</p>;

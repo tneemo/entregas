@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
 import { useId } from 'react';
 import { ErroDaApi } from '../api.ts';
+import type { SituacaoConexao } from '../tempo-real.ts';
 
 type Variante = 'principal' | 'secundario' | 'perigo' | 'discreto';
 
@@ -139,5 +140,17 @@ export function AreaTexto({
       />
       {erro && <p className="text-sm text-aluguel">{erro}</p>}
     </div>
+  );
+}
+
+/** Situação da conexão de tempo real com a central. */
+export function IndicadorConexao({ conexao }: { conexao: SituacaoConexao }) {
+  if (conexao === 'desligado') return null;
+  const aoVivo = conexao === 'ao_vivo';
+  return (
+    <span role="status" className="inline-flex items-center gap-1.5 text-sm">
+      <span className={`h-2 w-2 rounded-full ${aoVivo ? 'bg-ok' : 'bg-sinal'}`} aria-hidden />
+      {aoVivo ? 'Ao vivo' : conexao === 'conectando' ? 'Conectando…' : 'Sem conexão, tentando de novo…'}
+    </span>
   );
 }

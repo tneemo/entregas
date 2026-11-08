@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from 'react-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   GRUPOS_STATUS,
   ROTULOS_PAGAMENTO,
@@ -10,7 +10,7 @@ import {
 } from '@entregas/shared';
 import { api } from '../api.ts';
 import { AvisoErro } from '../componentes/ui.tsx';
-import { SeloStatus, haQuanto, horaCurta, rotuloMotoboy, useMotoboys } from '../componentes/pedido.tsx';
+import { SeloStatus, haQuanto, horaCurta, rotuloMotoboy, useMotoboys, usePedidos } from '../componentes/pedido.tsx';
 
 const SECOES: { grupo: keyof typeof GRUPOS_STATUS; titulo: string }[] = [
   { grupo: 'atencao', titulo: 'Precisam de atenção' },
@@ -111,12 +111,7 @@ export function Pedidos() {
   const [busca, setBusca] = useSearchParams();
   const concluidos = busca.get('ver') === 'concluidos';
 
-  const pedidos = useQuery({
-    queryKey: ['pedidos', empresaId, concluidos ? 'concluidos' : 'ativos'],
-    queryFn: () => api<PedidoResumo[]>(`/empresas/${empresaId}/pedidos?situacao=${concluidos ? 'concluidos' : 'ativos'}`),
-    // Até o tempo real chegar (Fase 1, parte 3), a fila se atualiza sozinha a cada 15 s.
-    refetchInterval: 15_000,
-  });
+  const pedidos = usePedidos(empresaId, concluidos ? 'concluidos' : 'ativos');
 
   const aba = (ativa: boolean) =>
     `border-b-2 px-1 pb-2 text-[15px] ${ativa ? 'border-mercosul font-semibold text-mercosul' : 'border-transparent text-concreto hover:text-asfalto'}`;

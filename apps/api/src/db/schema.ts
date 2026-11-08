@@ -207,6 +207,12 @@ export const pedidos = sqliteTable(
     /** Código de 4 dígitos que o destinatário informa ao receber. */
     codigoEntrega: text('codigo_entrega').notNull(),
     tentativasCodigo: integer('tentativas_codigo').notNull().default(0),
+    /**
+     * Segredo do link público de acompanhamento (/r/<token>). Fica em claro, ao contrário
+     * dos tokens de sessão e convite, porque a central precisa reenviar o link ao cliente.
+     * Só dá acesso de leitura ao status deste pedido.
+     */
+    tokenRastreio: text('token_rastreio').notNull(),
     /** Último motivo de falha ou cancelamento. */
     motivo: text('motivo'),
     criadoPor: text('criado_por')
@@ -218,6 +224,7 @@ export const pedidos = sqliteTable(
   },
   (t) => [
     uniqueIndex('pedidos_empresa_numero_unq').on(t.empresaId, t.numero),
+    uniqueIndex('pedidos_token_rastreio_unq').on(t.tokenRastreio),
     index('pedidos_empresa_status_idx').on(t.empresaId, t.status),
     index('pedidos_motoboy_status_idx').on(t.motoboyVinculoId, t.status),
   ],

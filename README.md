@@ -32,7 +32,9 @@ npm run db:migrar:local -w @entregas/api
 npm run dev
 ```
 
-O painel abre em http://localhost:5173 (a API roda em http://localhost:8787 e o Vite repassa `/api`).
+O painel abre em http://localhost:5173 (a API roda em http://localhost:8787 e o Vite repassa `/api`, inclusive os WebSockets do tempo real).
+O mapa ao vivo fica em **Mapa ao vivo** no menu. O link de acompanhamento do cliente (`/r/<token>`) aparece no
+detalhe do pedido, junto do código de entrega.
 
 No primeiro acesso, abra **/configuracao-inicial** e use o `SETUP_TOKEN` do `.dev.vars` para criar o super admin.
 Depois: cadastre uma empresa, envie o link de convite ao administrador dela, e ele convida despachantes e motoboys.

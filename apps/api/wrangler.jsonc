@@ -6,11 +6,19 @@
   "observability": { "enabled": true },
 
   // Painel (React) servido pelo mesmo Worker: /api/* vai para o código, o resto para os arquivos estáticos.
+  // /r/* (rastreio público) passa pelo código para servir a página leve de acompanhamento.
   "assets": {
     "directory": "../painel/dist",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/r/*"]
   },
+
+  // Tempo real: um CentralEmpresa por empresa (mapa ao vivo e rastreio por WebSocket).
+  "durable_objects": {
+    "bindings": [{ "name": "CENTRAL", "class_name": "CentralEmpresa" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CentralEmpresa"] }],
 
   "d1_databases": [
     {

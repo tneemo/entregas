@@ -5,6 +5,7 @@ import {
   type DadosEmpresaResposta,
   type EnderecoResposta,
   type MotoboyResumo,
+  type PedidoResumo,
   type StatusPedido,
 } from '@entregas/shared';
 import { api } from '../api.ts';
@@ -46,6 +47,18 @@ export function haQuanto(iso: string) {
   if (minutos < 60) return `há ${minutos} min`;
   const horas = Math.floor(minutos / 60);
   return `há ${horas} h${minutos % 60 ? ` ${minutos % 60} min` : ''}`;
+}
+
+/**
+ * Fila de pedidos. O tempo real (tempo-real.ts) avisa na hora quando algo muda;
+ * a consulta periódica é só uma rede de segurança para conexões instáveis.
+ */
+export function usePedidos(empresaId: string, situacao: 'ativos' | 'concluidos') {
+  return useQuery({
+    queryKey: ['pedidos', empresaId, situacao],
+    queryFn: () => api<PedidoResumo[]>(`/empresas/${empresaId}/pedidos?situacao=${situacao}`),
+    refetchInterval: 60_000,
+  });
 }
 
 export function useMotoboys(empresaId: string) {

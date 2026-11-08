@@ -8,10 +8,13 @@ const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS']);
  * Bloqueia requisições entre sites que usariam o cookie de sessão do painel.
  * O app do motoboy usa Bearer (sem cookie) e não envia Origin, então não é afetado.
  * Navegadores modernos enviam Sec-Fetch-Site; nos antigos, comparamos o Origin.
+ * WebSocket é GET, mas abre um canal com a sessão: outro site não pode abrir
+ * a conexão do mapa ao vivo em nome de quem está logado (cross-site WebSocket hijacking).
  */
 export const protegerCsrf = createMiddleware<AppEnv>(async (c, next) => {
   const usaCookie = !c.req.header('authorization') && c.req.header('cookie')?.includes('sessao=');
-  if (usaCookie && !METODOS_SEGUROS.has(c.req.method)) {
+  const websocket = c.req.header('upgrade')?.toLowerCase() === 'websocket';
+  if (usaCookie && (websocket || !METODOS_SEGUROS.has(c.req.method))) {
     const site = c.req.header('sec-fetch-site');
     const origem = c.req.header('origin');
     const bloquear = site

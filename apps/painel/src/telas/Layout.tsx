@@ -3,7 +3,8 @@ import { Navigate, NavLink, Outlet, useLocation, useNavigate, useParams } from '
 import { ROTULOS, type EuResposta } from '@entregas/shared';
 import { lembrarEmpresa, useEu, useSair } from '../sessao.ts';
 import { Placa } from '../componentes/Placa.tsx';
-import { Botao } from '../componentes/ui.tsx';
+import { Botao, IndicadorConexao } from '../componentes/ui.tsx';
+import { useAoVivo } from '../tempo-real.ts';
 
 const PLATAFORMA = 'plataforma';
 
@@ -18,6 +19,9 @@ function Navegacao({ eu, empresaId }: { eu: EuResposta; empresaId?: string }) {
         <>
           <NavLink to={`/e/${vinculo.empresa.id}/pedidos`} className={item}>
             Pedidos
+          </NavLink>
+          <NavLink to={`/e/${vinculo.empresa.id}/mapa`} className={item}>
+            Mapa ao vivo
           </NavLink>
           <NavLink to={`/e/${vinculo.empresa.id}/equipe`} className={item}>
             Equipe
@@ -74,6 +78,9 @@ export function Layout() {
   const sair = useSair();
   const local = useLocation();
   const [menuAberto, setMenuAberto] = useState(false);
+  // Uma conexão de tempo real enquanto a central está numa empresa (mapa e fila se atualizam sozinhos).
+  const daCentral = eu?.vinculos.some((v) => v.empresa.id === empresaId && v.papel !== 'motoboy');
+  const aoVivo = useAoVivo(daCentral ? empresaId : undefined);
 
   if (isLoading) return <p className="p-6">Carregando…</p>;
   if (!eu) return <Navigate to="/entrar" replace state={{ voltarPara: local.pathname }} />;
@@ -92,6 +99,7 @@ export function Layout() {
       <div className="flex flex-col gap-2">
         <Placa texto={placa} />
         <p className="text-sm text-concreto">{subtitulo}</p>
+        <IndicadorConexao conexao={aoVivo.conexao} />
       </div>
       <SeletorContexto eu={eu} atual={empresaId ?? PLATAFORMA} />
       <Navegacao eu={eu} empresaId={empresaId} />

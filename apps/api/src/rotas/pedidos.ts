@@ -15,6 +15,7 @@ import { ErroApi, naoEncontrado } from '../erros.ts';
 import { lerCorpo } from '../validar.ts';
 import { exigirEmpresa } from '../middleware/empresa.ts';
 import { escopoPedidos } from '../dados/escopo-pedidos.ts';
+import { avisar } from '../central/avisar.ts';
 
 const escopo = (c: { var: AppEnv['Variables'] }) => escopoPedidos(c.var.db, c.var.empresa);
 
@@ -35,7 +36,11 @@ export const rotasPedidos = new Hono<AppEnv>()
 
   .post('/', exigirEmpresa('admin', 'despachante'), async (c) => {
     const dados = await lerCorpo(c, schemaCriarPedido);
-    return c.json(await escopo(c).criar(dados), 201);
+    const pedido = await escopo(c).criar(dados);
+    avisar(c, c.var.empresa.empresaId, (central) =>
+      central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null),
+    );
+    return c.json(pedido, 201);
   })
 
   .get('/:pedidoId', exigirEmpresa(), async (c) => c.json(await escopo(c).detalhe(c.req.param('pedidoId'))))
@@ -45,7 +50,12 @@ export const rotasPedidos = new Hono<AppEnv>()
     const acao = schemaParamAcao.safeParse(c.req.param('acao'));
     if (!acao.success) throw naoEncontrado('Ação desconhecida.');
     const dados = await lerCorpo(c, schemaAcaoPedidoComPosicao);
-    return c.json(await escopo(c).executar(c.req.param('pedidoId'), acao.data, dados));
+    const pedido = await escopo(c).executar(c.req.param('pedidoId'), acao.data, dados);
+    // Avisa painel e rastreio; a resposta ao motoboy pode omitir dados, mas status e motoboy vêm sempre.
+    avisar(c, c.var.empresa.empresaId, (central) =>
+      central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null),
+    );
+    return c.json(pedido);
   })
 
   /** Foto de comprovante: corpo é a imagem em si (image/jpeg, image/png ou image/webp). */

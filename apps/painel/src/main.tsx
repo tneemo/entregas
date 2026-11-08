@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,6 +15,9 @@ import { NovoPedido } from './telas/NovoPedido.tsx';
 import { PedidoDetalhe } from './telas/PedidoDetalhe.tsx';
 import { DadosEmpresa } from './telas/DadosEmpresa.tsx';
 import { TelaPublica } from './telas/Entrar.tsx';
+
+// O mapa (Leaflet) só baixa quando alguém abre a tela.
+const MapaAoVivo = lazy(() => import('./telas/MapaAoVivo.tsx').then((m) => ({ default: m.MapaAoVivo })));
 
 const consultas = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -47,6 +50,14 @@ createRoot(document.getElementById('raiz')!).render(
             <Route path="pedidos" element={<Pedidos />} />
             <Route path="pedidos/novo" element={<NovoPedido />} />
             <Route path="pedidos/:pedidoId" element={<PedidoDetalhe />} />
+            <Route
+              path="mapa"
+              element={
+                <Suspense fallback={<p>Carregando mapa…</p>}>
+                  <MapaAoVivo />
+                </Suspense>
+              }
+            />
             <Route path="equipe" element={<Equipe />} />
             <Route path="empresa" element={<DadosEmpresa />} />
           </Route>

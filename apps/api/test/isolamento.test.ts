@@ -29,6 +29,8 @@ describe('isolamento entre empresas', () => {
       cliente.post(`${B}/convites`, { papel: 'motoboy' }),
       cliente.delete(`${B}/convites/${conviteB.id}`),
       cliente.patch(`${B}/membros/${b.motoboy.eu.vinculos[0].vinculoId}`, { status: 'suspenso' }),
+      cliente.get(`${B}/central/posicoes`),
+      cliente.req('GET', `${B}/central/ws`, undefined, { upgrade: 'websocket', 'sec-fetch-site': 'same-origin' }),
     ];
     for (const r of await Promise.all(tentativas)) {
       expect(r.status).toBe(404);

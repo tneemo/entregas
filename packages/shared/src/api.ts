@@ -169,6 +169,8 @@ export interface PedidoDetalhe extends PedidoResumo {
   acoes: AcaoPedido[];
   eventos: EventoPedidoResposta[];
   fotos: FotoResposta[];
+  /** Link público de acompanhamento (só a central recebe, para enviar ao cliente). */
+  rastreio?: { caminho: string };
 }
 
 export interface ClienteResposta {
@@ -190,4 +192,20 @@ export interface TurnoResposta {
   turno: { id: string; iniciadoEm: string } | null;
   /** Turno aberto em outra empresa: o motoboy só trabalha para uma por vez. */
   emOutraEmpresa: { empresaId: string; nomeFantasia: string } | null;
+}
+
+/** Página pública de acompanhamento. Só o que o destinatário precisa: nada de telefone, nada de outros pedidos. */
+export interface RastreioResposta {
+  empresa: { nomeFantasia: string; telefone: string | null };
+  numero: number;
+  status: StatusPedido;
+  horarios: { recebido: string; saiuParaEntrega: string | null; concluido: string | null };
+  /** Enquanto o pedido está em andamento; some depois que termina. */
+  entrega: Pick<EnderecoResposta, 'logradouro' | 'numero' | 'complemento' | 'bairro' | 'cidade' | 'uf'> | null;
+  cobranca: { formaPagamento: FormaPagamento; valorACobrarCentavos: number; trocoParaCentavos: number | null } | null;
+  /** O destinatário informa ao entregador. Some quando não há mais entrega a confirmar. */
+  codigoEntrega: string | null;
+  motoboy: { primeiroNome: string } | null;
+  /** Posição do entregador ao vivo pelo WebSocket: só em rota de entrega. */
+  aoVivo: boolean;
 }

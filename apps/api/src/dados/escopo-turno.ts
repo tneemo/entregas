@@ -19,6 +19,11 @@ import { ErroApi } from '../erros.ts';
 /** Tolerância para relógio do celular adiantado ou atrasado. */
 const FOLGA_RELOGIO_MS = 2 * 60 * 1000;
 
+interface TurnoFechado {
+  empresaId: string;
+  vinculoId: string;
+}
+
 export function escopoTurno(db: Db, ctx: ContextoEmpresa) {
   const { empresaId, usuarioId } = ctx;
 
@@ -49,13 +54,19 @@ export function escopoTurno(db: Db, ctx: ContextoEmpresa) {
   return {
     situacao,
 
-    async iniciar(): Promise<TurnoResposta> {
+    /**
+     * `turnoFechado`: turno esquecido em outra empresa que foi encerrado aqui, para
+     * a central daquela empresa tirar o motoboy do mapa.
+     */
+    async iniciar(): Promise<{ resposta: TurnoResposta; turnoFechado: TurnoFechado | null }> {
       const aberto = await turnoAberto();
-      if (aberto?.turno.empresaId === empresaId) return situacao();
+      if (aberto?.turno.empresaId === empresaId) return { resposta: await situacao(), turnoFechado: null };
+      let turnoFechado: TurnoFechado | null = null;
       if (aberto) {
         // Turno esquecido numa empresa onde ele não pode mais trabalhar: fecha sozinho.
         if (aberto.statusEmpresa !== 'ativa' || aberto.statusVinculo !== 'ativo') {
           await db.update(turnos).set({ encerradoEm: new Date() }).where(eq(turnos.id, aberto.turno.id));
+          turnoFechado = { empresaId: aberto.turno.empresaId, vinculoId: aberto.turno.vinculoId };
         } else {
           throw new ErroApi(
             409,
@@ -72,7 +83,7 @@ export function escopoTurno(db: Db, ctx: ContextoEmpresa) {
         }
         throw erro;
       }
-      return situacao();
+      return { resposta: await situacao(), turnoFechado };
     },
 
     async encerrar(): Promise<TurnoResposta> {
@@ -102,7 +113,10 @@ export function escopoTurno(db: Db, ctx: ContextoEmpresa) {
       return situacao();
     },
 
-    /** Recebe pontos acumulados no celular (podem chegar atrasados, quando volta o sinal). */
+    /**
+     * Recebe pontos acumulados no celular (podem chegar atrasados, quando volta o sinal).
+     * `maisRecente` vai para o mapa ao vivo.
+     */
     async registrarPosicoes(pontos: z.output<typeof schemaPosicoes>['pontos']) {
       const aberto = await turnoAberto();
       if (!aberto || aberto.turno.empresaId !== empresaId) {
@@ -129,7 +143,11 @@ export function escopoTurno(db: Db, ctx: ContextoEmpresa) {
         );
         await db.batch([primeiro!, ...resto]);
       }
-      return { recebidos: validos.length, descartados: pontos.length - validos.length };
+      const maisRecente = validos.reduce<(typeof validos)[number] | null>(
+        (ultimo, p) => (!ultimo || Date.parse(p.registradoEm) > Date.parse(ultimo.registradoEm) ? p : ultimo),
+        null,
+      );
+      return { recebidos: validos.length, descartados: pontos.length - validos.length, maisRecente };
     },
   };
 }

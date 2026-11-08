@@ -11,6 +11,7 @@ import {
   TRANSICOES,
   acoesPermitidas,
   atorDoPapel,
+  caminhoRastreio,
   statusFinal,
   type AcaoPedido,
   type ClienteResposta,
@@ -28,6 +29,7 @@ import type { Db } from '../db/index.ts';
 import { clientes, eventosPedido, fotosPedido, paradas, pedidos, turnos, usuarios, vinculos } from '../db/schema.ts';
 import type { ContextoEmpresa } from '../tipos.ts';
 import { ErroApi, camposInvalidos, naoEncontrado, proibido } from '../erros.ts';
+import { gerarToken } from '../auth/cripto.ts';
 
 type DadosCriar = z.output<typeof schemaCriarPedido>;
 type DadosAcao = z.output<typeof schemaAcaoPedidoComPosicao>;
@@ -169,7 +171,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       taxaEntregaCentavos: p.taxaEntregaCentavos,
       observacoes: p.observacoes,
       motivo: p.motivo,
-      ...(ehMotoboy ? {} : { codigoEntrega: p.codigoEntrega }),
+      ...(ehMotoboy ? {} : { codigoEntrega: p.codigoEntrega, rastreio: { caminho: caminhoRastreio(p.tokenRastreio) } }),
       codigoBloqueado,
       acoes,
       eventos: eventos.map(({ evento: e, autor }) => ({
@@ -249,6 +251,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
           taxaEntregaCentavos: dados.taxaEntregaCentavos,
           observacoes: dados.observacoes ?? null,
           codigoEntrega: gerarCodigo(),
+          tokenRastreio: gerarToken(16),
           criadoPor: ctx.usuarioId,
         }),
         db.insert(paradas).values([

@@ -113,6 +113,10 @@ flowchart LR
   - consultas SQL soltas fora dessa camada são proibidas (regra de lint/revisão);
   - **testes automáticos de isolamento** tentam ler/escrever dados de outra empresa em cada rota.
 - **Durable Object `CentralEmpresa`** (um por empresa): recebe posições dos motoboys em turno, guarda a última posição, transmite por WebSocket ao painel (mapa ao vivo) e ao link de rastreio (apenas o motoboy daquele pedido, apenas enquanto em rota). Usa WebSocket Hibernation para custo baixo.
+  - Implementado na Fase 1, parte 3. O Worker continua gravando todos os pontos no D1; o DO recebe só o mais recente de cada envio (pontos atrasados da fila offline não voltam o marcador) e o apaga quando o turno encerra. Posição sem atualização há 12 h some do mapa.
+  - Os avisos ao DO saem depois da resposta (`waitUntil`): se o tempo real falhar, a operação não falha; o painel se corrige ao reconectar e com uma consulta de segurança a cada 60 s.
+  - WebSocket do painel exige sessão de admin/despachante e é bloqueado quando aberto por outro site (mesma regra de CSRF).
+- **Link de rastreio**: `pedidos.token_rastreio` (128 bits aleatórios) guardado em claro, porque a central reenvia o link; dá só leitura do status daquele pedido. A resposta não traz nome nem telefone do destinatário; código, endereço e cobrança somem quando o pedido termina, e o link expira 48 h depois. A página é uma segunda entrada do build do painel (`apps/painel/rastreio.html`), leve (sem React Query, roteador nem zod; o mapa só baixa em rota) e servida pelo Worker em `/r/*`.
 - **R2**: fotos de comprovante e documentos do motoboy (acesso por URL assinada de curta duração).
 - **Queues**: entrega confiável de webhooks e processamento de eventos do iFood.
 - **Cron Triggers / Alarms**: polling do iFood (via alarm de DO, intervalo de 30s), alerta de documentos vencendo, geração da fatura mensal de comissão, expurgo de GPS (LGPD).
@@ -126,6 +130,7 @@ flowchart LR
 - Distribuição: Google Play (conta de desenvolvedor) ou APK direto na fase piloto.
 
 ### Google Maps
+- **Provisório:** enquanto não há conta no Google Cloud, os mapas usam Leaflet + OpenStreetMap (`apps/painel/src/componentes/Mapa.tsx`). A política de uso dos servidores do OSM não comporta volume de produção; a troca para o Maps JavaScript fica toda nesse componente.
 - **Places Autocomplete + Geocoding** no cadastro de endereços (painel e link público); CEP preenchido via BrasilAPI.
 - **Maps JavaScript** no mapa ao vivo e no rastreio.
 - **Routes API** para distância/tempo → frete por km e ETA.
@@ -228,7 +233,9 @@ entregas/
   apps/
     api/        Worker (Hono) + Durable Objects + migrations D1
     painel/     React + Vite (empresa, despachante, super admin, portal do contratante)
-    publico/    link de pedido + página de rastreio (leve, mobile-first)
+                + páginas públicas leves como entradas separadas do mesmo build
+                (rastreio.html; o link público de pedido da Fase 3 vai pelo mesmo caminho),
+                porque um Worker serve um único diretório de arquivos estáticos
     motoboy/    Expo (Android)
   packages/
     shared/     tipos, schemas Zod, máquina de estados, cálculo de frete/acerto/comissão
@@ -243,7 +250,7 @@ Monorepo com **npm workspaces**; TypeScript em tudo; testes com Vitest (`@cloudf
 | Fase | Entrega |
 |---|---|
 | **0 — Fundação** ✅ | Monorepo, Worker + D1, auth, camada multi-tenant com testes de isolamento, cadastro de empresas/usuários/vínculos, convites, painel (login, empresas, equipe, aceite de convite) |
-| **1 — Núcleo** | **Parte 1 ✅** pedidos pelo painel, ciclo de status com histórico, despacho manual, código de entrega (bloqueia após 5 erros), cadastro de clientes pelo telefone, endereço da empresa como coleta padrão, CEP via ViaCEP. **Parte 2 ✅** app Android do motoboy em Expo (login, turno único por pessoa, GPS em segundo plano com aviso fixo e fila offline, entregas, código, foto no R2), retenção de GPS de 90 dias por cron. Pendente: teste em aparelho real e notificação push. **Parte 3** link de rastreio, mapa ao vivo (Durable Objects), fotos de comprovante (R2) |
+| **1 — Núcleo** | **Parte 1 ✅** pedidos pelo painel, ciclo de status com histórico, despacho manual, código de entrega (bloqueia após 5 erros), cadastro de clientes pelo telefone, endereço da empresa como coleta padrão, CEP via ViaCEP. **Parte 2 ✅** app Android do motoboy em Expo (login, turno único por pessoa, GPS em segundo plano com aviso fixo e fila offline, entregas, código, foto no R2), retenção de GPS de 90 dias por cron. Pendente: teste em aparelho real e notificação push. **Parte 3 ✅** Durable Object `CentralEmpresa` com WebSocket Hibernation, mapa ao vivo no painel (posições e turnos em tempo real, fila de pedidos atualizada sozinha), link público de rastreio `/r/<token>` (status, código, mapa do entregador só em rota, expira 48 h após concluir) e link + código no botão do WhatsApp. Mapa provisório em Leaflet + OpenStreetMap até existir a chave do Google Maps |
 | **2 — Dinheiro** | Cobrança na entrega, acerto, remuneração, frete por km, comissão + fatura mensal |
 | **3 — Entradas** | Link público de pedido, portal do cliente contratante, API pública + webhooks |
 | **4 — Integrações** | iFood (requer cadastro e homologação no portal de desenvolvedores do iFood), PDVs, despacho automático, roteirização multi-paradas, WhatsApp API oficial, Pix dinâmico |

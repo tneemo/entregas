@@ -29,6 +29,13 @@
       "when": 1794073770499,
       "tag": "0003_turnos_posicoes_fotos",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794172142173,
+      "tag": "0004_rastreio",
+      "breakpoints": true
     }
   ]
 }
