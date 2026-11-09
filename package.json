@@ -31,6 +31,7 @@
     "node": ">=22"
   },
   "allowScripts": {
+    "@sentry/cli": true,
     "esbuild": true,
     "workerd": true
   }

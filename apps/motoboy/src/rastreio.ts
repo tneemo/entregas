@@ -15,6 +15,8 @@ import * as TaskManager from 'expo-task-manager';
 import type { DadosPosicoes } from '@entregas/shared';
 import { api, ErroDaApi } from './api.ts';
 import { cores } from './tema.ts';
+// Também inicia o Sentry quando o Android acorda o app só para esta tarefa.
+import { Sentry } from './monitoramento.ts';
 
 const TAREFA = 'entregas-gps-turno';
 const CHAVE_FILA = 'entregas.gps.fila';
@@ -78,6 +80,8 @@ export async function enviarFila() {
 
 if (Platform.OS !== 'web') {
   TaskManager.defineTask<{ locations: Location.LocationObject[] }>(TAREFA, async ({ data, error }) => {
+    // Ex.: permissão de localização retirada com o turno aberto. A central perde o motoboy no mapa.
+    if (error) Sentry.captureMessage(`GPS do turno: ${error.message}`, 'warning');
     if (error || !data?.locations?.length) return;
     await enfileirar(data.locations.map(paraPonto));
     await enviarFila();

@@ -11,10 +11,14 @@
     "tipos": "wrangler types",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "deploy": "npm run build -w @entregas/painel && wrangler deploy --env producao"
+    "db:migrar:homologacao": "wrangler d1 migrations apply DB --remote --env homologacao",
+    "db:migrar:producao": "wrangler d1 migrations apply DB --remote --env producao",
+    "deploy:homologacao": "npm run build -w @entregas/painel && wrangler deploy --env homologacao",
+    "deploy:producao": "npm run build -w @entregas/painel && wrangler deploy --env producao"
   },
   "dependencies": {
     "@entregas/shared": "*",
+    "@sentry/cloudflare": "11.11.0",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.17",
     "zod": "^4.6.7"

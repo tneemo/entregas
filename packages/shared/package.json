@@ -8,7 +8,8 @@
     "./pedidos": "./src/pedidos.ts",
     "./rastreio": "./src/rastreio.ts",
     "./dinheiro": "./src/dinheiro.ts",
-    "./validacao": "./src/validacao.ts"
+    "./validacao": "./src/validacao.ts",
+    "./privacidade": "./src/privacidade.ts"
   },
   "scripts": {
     "test": "vitest run",

@@ -1,0 +1,29 @@
+# Todo PR e todo push na main passam pela verificação.
+# Na main, se passar, publica na homologação (banco e fotos próprios).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Em PR, um push novo cancela a verificação antiga; na main nada é cancelado no meio.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verificar:
+    uses: ./.github/workflows/verificar.yml
+
+  homologacao:
+    name: Publicar na homologação
+    needs: verificar
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/publicar.yml
+    with:
+      ambiente: homologacao
+    secrets: inherit

@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { ErroResposta } from '@entregas/shared';
 import { violouUnicidade } from './db/index.ts';
+import { registrarErro } from './monitoramento.ts';
 
 export class ErroApi extends Error {
   constructor(
@@ -44,5 +45,6 @@ export function tratarErro(erro: Error, c: Context) {
     );
   }
   console.error('erro não tratado', erro);
+  registrarErro(erro);
   return c.json<ErroResposta>({ erro: { codigo: 'erro_interno', mensagem: 'Erro inesperado. Tente novamente.' } }, 500);
 }

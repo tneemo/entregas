@@ -16,6 +16,8 @@ import { rotasConvites } from './rotas/convites.ts';
 import { rotasCentral } from './rotas/central.ts';
 import { rotasRastreio } from './rotas/rastreio.ts';
 import { executarCron } from './tarefas.ts';
+import { opcoesSentry, Sentry } from './monitoramento.ts';
+import { CentralEmpresa as CentralEmpresaSemMonitor } from './central/central-empresa.ts';
 
 const app = new Hono<AppEnv>().basePath('/api/v1');
 
@@ -59,7 +61,9 @@ app.notFound((c) =>
 );
 app.onError(tratarErro);
 
-export { CentralEmpresa } from './central/central-empresa.ts';
+// Erros dentro do Durable Object (WebSockets do tempo real) também vão para o Sentry.
+export const CentralEmpresa = Sentry.instrumentDurableObjectWithSentry(opcoesSentry, CentralEmpresaSemMonitor);
+export type CentralEmpresa = CentralEmpresaSemMonitor;
 
 /** /r/<token>: página leve de acompanhamento (rastreio.html do build do painel). */
 async function paginaRastreio(request: Request, env: Env) {
@@ -71,14 +75,20 @@ async function paginaRastreio(request: Request, env: Env) {
   return resposta;
 }
 
-export default {
+const worker = {
   fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
     if (pathname.startsWith('/r/')) return paginaRastreio(request, env);
     return app.fetch(request, env, ctx);
   },
-  /** Cron Triggers do wrangler.jsonc: expurgo diário de GPS e prazo de aceite a cada minuto. */
-  async scheduled(evento, env, ctx) {
-    ctx.waitUntil(executarCron(evento.cron, env));
+  /**
+   * Cron Triggers do wrangler.jsonc: expurgo diário de GPS e prazo de aceite a cada minuto.
+   * Aguarda a tarefa (em vez de waitUntil) para que uma falha marque a execução como erro
+   * na Cloudflare e chegue ao Sentry.
+   */
+  async scheduled(evento, env) {
+    await executarCron(evento.cron, env);
   },
 } satisfies ExportedHandler<Env>;
+
+export default Sentry.withSentry(opcoesSentry, worker);
