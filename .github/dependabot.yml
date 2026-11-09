@@ -15,12 +15,14 @@ updates:
     ignore:
       # O SDK do Expo fixa versões compatíveis entre si (e o React acompanha):
       # atualize com `npx expo install --fix` dentro de apps/motoboy.
+      # Vale também para bibliotecas nativas que o Expo escolhe a versão, como o Sentry do app.
       - dependency-name: "expo"
       - dependency-name: "expo-*"
       - dependency-name: "@expo/*"
       - dependency-name: "react-native"
       - dependency-name: "react-native-*"
       - dependency-name: "@react-native-async-storage/*"
+      - dependency-name: "@sentry/react-native"
       - dependency-name: "react"
       - dependency-name: "react-dom"
       - dependency-name: "@types/react"
