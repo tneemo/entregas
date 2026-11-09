@@ -75,11 +75,17 @@ function Parada({ titulo, parada }: { titulo: string; parada: ParadaResposta }) 
           <Botao
             titulo="Google Maps"
             variante="secundario"
-            aoTocar={() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destino}&travelmode=driving`)}
+            aoTocar={() =>
+              Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destino}&travelmode=driving`)
+            }
           />
         </View>
         <View style={{ flexGrow: 1 }}>
-          <Botao titulo="Waze" variante="secundario" aoTocar={() => Linking.openURL(`https://waze.com/ul?q=${destino}&navigate=yes`)} />
+          <Botao
+            titulo="Waze"
+            variante="secundario"
+            aoTocar={() => Linking.openURL(`https://waze.com/ul?q=${destino}&navigate=yes`)}
+          />
         </View>
       </View>
       {parada.telefone ? (
@@ -135,7 +141,11 @@ function FormularioAcao({
   const motivos = acao === 'falhar' ? MOTIVOS_FALHA : MOTIVOS_SEM_CODIGO;
   const dadoOk = acao === 'entregar' ? codigo.length === 4 : motivo.trim().length >= 3;
   const rotuloFoto =
-    acao === 'falhar' ? 'Fotografar o local' : acao === 'entregar_sem_codigo' ? 'Fotografar onde ficou' : 'Fotografar comprovante';
+    acao === 'falhar'
+      ? 'Fotografar o local'
+      : acao === 'entregar_sem_codigo'
+        ? 'Fotografar onde ficou'
+        : 'Fotografar comprovante';
 
   return (
     <Secao titulo={TITULO_FORMULARIO[acao]}>
@@ -158,13 +168,28 @@ function FormularioAcao({
         <>
           <Text style={texto.corpo}>{acao === 'falhar' ? 'O que aconteceu?' : 'Com quem ou onde ficou?'}</Text>
           {motivos.map((m) => (
-            <Botao key={m} titulo={m} variante={motivo === m ? 'principal' : 'secundario'} aoTocar={() => setMotivo(m)} />
+            <Botao
+              key={m}
+              titulo={m}
+              variante={motivo === m ? 'principal' : 'secundario'}
+              aoTocar={() => setMotivo(m)}
+            />
           ))}
-          <Campo rotulo="Ou descreva" value={motivos.includes(motivo) ? '' : motivo} onChangeText={setMotivo} erro={erroCampo} />
+          <Campo
+            rotulo="Ou descreva"
+            value={motivos.includes(motivo) ? '' : motivo}
+            onChangeText={setMotivo}
+            erro={erroCampo}
+          />
         </>
       )}
       {foto ? (
-        <Image source={{ uri: foto }} style={{ width: '100%', height: 220, borderRadius: 8 }} resizeMode="cover" accessibilityLabel="Foto do comprovante" />
+        <Image
+          source={{ uri: foto }}
+          style={{ width: '100%', height: 220, borderRadius: 8 }}
+          resizeMode="cover"
+          accessibilityLabel="Foto do comprovante"
+        />
       ) : null}
       {erroFoto ? <Aviso>{erroFoto}</Aviso> : null}
       <Botao
@@ -204,7 +229,15 @@ export default function Entrega() {
   });
 
   const executar = useMutation({
-    mutationFn: async ({ acao, dados, fotoUri }: { acao: AcaoPedido; dados: DadosAcaoPedido; fotoUri?: string | null }) => {
+    mutationFn: async ({
+      acao,
+      dados,
+      fotoUri,
+    }: {
+      acao: AcaoPedido;
+      dados: DadosAcaoPedido;
+      fotoUri?: string | null;
+    }) => {
       // A foto sobe antes: se a internet cair no meio, a ação ainda não foi registrada.
       if (fotoUri) {
         const tipo = tipoDaFoto(acao);
@@ -266,7 +299,9 @@ export default function Entrega() {
 
         <Secao titulo="Cobrança">
           {p.formaPagamento === 'pago' ? (
-            <Text style={[texto.corpo, { fontSize: 22, fontWeight: '700', color: cores.ok }]}>Já pago: não cobrar nada.</Text>
+            <Text style={[texto.corpo, { fontSize: 22, fontWeight: '700', color: cores.ok }]}>
+              Já pago: não cobrar nada.
+            </Text>
           ) : (
             <Text style={[texto.corpo, { fontSize: 22, fontWeight: '700' }]}>
               Cobrar {formatarReais(p.valorACobrarCentavos)} ({ROTULOS_PAGAMENTO[p.formaPagamento].toLowerCase()})
@@ -279,10 +314,10 @@ export default function Entrega() {
           ) : null}
         </Secao>
 
-        {p.observacoes ? (
-          <Aviso tipo="info">{p.observacoes}</Aviso>
+        {p.observacoes ? <Aviso tipo="info">{p.observacoes}</Aviso> : null}
+        {p.codigoBloqueado ? (
+          <Aviso>Código bloqueado após várias tentativas. Fale com a central para confirmar a entrega.</Aviso>
         ) : null}
-        {p.codigoBloqueado ? <Aviso>Código bloqueado após várias tentativas. Fale com a central para confirmar a entrega.</Aviso> : null}
         {p.status === 'atribuido' && p.aceiteAte ? <PrazoAceite ate={p.aceiteAte} /> : null}
 
         {aberta ? (

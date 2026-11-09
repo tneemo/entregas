@@ -1,12 +1,6 @@
 // Formatos de resposta da API, compartilhados com o painel e o app.
 
-import type {
-  Papel,
-  StatusEmpresa,
-  StatusVinculo,
-  TipoEmpresa,
-  TipoVinculo,
-} from './papeis.ts';
+import type { Papel, StatusEmpresa, StatusVinculo, TipoEmpresa, TipoVinculo } from './papeis.ts';
 import type { AcaoPedido, FormaPagamento, RegrasEntrega, StatusPedido, TipoFoto } from './pedidos.ts';
 
 export interface ErroResposta {

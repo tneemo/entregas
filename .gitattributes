@@ -1,0 +1,5 @@
+# Mesmo final de linha no Windows e no CI (Linux): o formatador confere LF.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary

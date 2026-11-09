@@ -1,12 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { getCookie } from 'hono/cookie';
 import type { AppEnv } from '../tipos.ts';
-import {
-  NOME_COOKIE,
-  apagarCookieSessao,
-  buscarSessao,
-  definirCookieSessao,
-} from '../auth/sessao.ts';
+import { NOME_COOKIE, apagarCookieSessao, buscarSessao, definirCookieSessao } from '../auth/sessao.ts';
 import { naoAutenticado, proibido } from '../erros.ts';
 
 /** Painel usa cookie HttpOnly; o app do motoboy usa `Authorization: Bearer`. */

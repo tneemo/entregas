@@ -15,7 +15,15 @@ import { api } from '../api.ts';
 import { LinkConvite } from '../componentes/LinkConvite.tsx';
 import { AvisoErro, Botao, Campo, Selecao, Situacao, erroDoCampo } from '../componentes/ui.tsx';
 
-const VAZIO = { tipo: 'loja' as TipoEmpresa, nomeFantasia: '', razaoSocial: '', cnpj: '', cidadeId: '', telefone: '', email: '' };
+const VAZIO = {
+  tipo: 'loja' as TipoEmpresa,
+  nomeFantasia: '',
+  razaoSocial: '',
+  cnpj: '',
+  cidadeId: '',
+  telefone: '',
+  email: '',
+};
 
 function CadastrarEmpresa({ aoCadastrar }: { aoCadastrar: (r: CriarEmpresaResposta) => void }) {
   const cliente = useQueryClient();
@@ -62,8 +70,20 @@ function CadastrarEmpresa({ aoCadastrar }: { aoCadastrar: (r: CriarEmpresaRespos
         </div>
       </fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Nome fantasia" value={dados.nomeFantasia} onChange={mudar('nomeFantasia')} erro={erro('nomeFantasia')} required />
-        <Campo rotulo="Razão social" value={dados.razaoSocial} onChange={mudar('razaoSocial')} erro={erro('razaoSocial')} required />
+        <Campo
+          rotulo="Nome fantasia"
+          value={dados.nomeFantasia}
+          onChange={mudar('nomeFantasia')}
+          erro={erro('nomeFantasia')}
+          required
+        />
+        <Campo
+          rotulo="Razão social"
+          value={dados.razaoSocial}
+          onChange={mudar('razaoSocial')}
+          erro={erro('razaoSocial')}
+          required
+        />
         <Campo
           rotulo="CNPJ"
           dica="Aceita o formato novo, com letras."
@@ -79,8 +99,20 @@ function CadastrarEmpresa({ aoCadastrar }: { aoCadastrar: (r: CriarEmpresaRespos
             </option>
           ))}
         </Selecao>
-        <Campo rotulo="Telefone (opcional)" type="tel" value={dados.telefone} onChange={mudar('telefone')} erro={erro('telefone')} />
-        <Campo rotulo="E-mail (opcional)" type="email" value={dados.email} onChange={mudar('email')} erro={erro('email')} />
+        <Campo
+          rotulo="Telefone (opcional)"
+          type="tel"
+          value={dados.telefone}
+          onChange={mudar('telefone')}
+          erro={erro('telefone')}
+        />
+        <Campo
+          rotulo="E-mail (opcional)"
+          type="email"
+          value={dados.email}
+          onChange={mudar('email')}
+          erro={erro('email')}
+        />
       </div>
       <AvisoErro erro={criar.error} />
       <Botao type="submit" carregando={criar.isPending} className="self-start">
@@ -90,7 +122,13 @@ function CadastrarEmpresa({ aoCadastrar }: { aoCadastrar: (r: CriarEmpresaRespos
   );
 }
 
-function LinhaEmpresa({ empresa, aoConvidar }: { empresa: EmpresaResposta; aoConvidar: (c: ConviteCriadoResposta) => void }) {
+function LinhaEmpresa({
+  empresa,
+  aoConvidar,
+}: {
+  empresa: EmpresaResposta;
+  aoConvidar: (c: ConviteCriadoResposta) => void;
+}) {
   const cliente = useQueryClient();
   const ativa = empresa.status === 'ativa';
   const alternar = useMutation({
@@ -100,7 +138,10 @@ function LinhaEmpresa({ empresa, aoConvidar }: { empresa: EmpresaResposta; aoCon
   });
   const convidar = useMutation({
     mutationFn: () =>
-      api<ConviteCriadoResposta>(`/admin/empresas/${empresa.id}/convites`, { metodo: 'POST', corpo: { papel: 'admin' } }),
+      api<ConviteCriadoResposta>(`/admin/empresas/${empresa.id}/convites`, {
+        metodo: 'POST',
+        corpo: { papel: 'admin' },
+      }),
     onSuccess: aoConvidar,
   });
 
@@ -120,7 +161,11 @@ function LinhaEmpresa({ empresa, aoConvidar }: { empresa: EmpresaResposta; aoCon
           <Botao variante="secundario" carregando={convidar.isPending} onClick={() => convidar.mutate()}>
             Convidar admin
           </Botao>
-          <Botao variante={ativa ? 'perigo' : 'secundario'} carregando={alternar.isPending} onClick={() => alternar.mutate()}>
+          <Botao
+            variante={ativa ? 'perigo' : 'secundario'}
+            carregando={alternar.isPending}
+            onClick={() => alternar.mutate()}
+          >
             {ativa ? 'Suspender' : 'Reativar'}
           </Botao>
         </div>

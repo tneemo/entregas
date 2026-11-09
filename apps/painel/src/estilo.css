@@ -1,8 +1,8 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @theme {
-  --font-sans: 'Barlow', system-ui, sans-serif;
-  --font-cond: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  --font-sans: "Barlow", system-ui, sans-serif;
+  --font-cond: "Barlow Condensed", "Barlow", system-ui, sans-serif;
 
   --color-papel: #f4f6f8;
   --color-asfalto: #1e2529;
@@ -40,7 +40,9 @@
     *,
     *::before,
     *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: "reduzir movimento" precisa vencer qualquer transição. */
       transition-duration: 0ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: idem. */
       animation-duration: 0ms !important;
     }
   }
@@ -63,7 +65,9 @@
     border-radius: 9999px;
     background: var(--color-mercosul);
     border: 3px solid #fff;
-    box-shadow: 0 0 0 1px var(--color-asfalto), 0 1px 4px rgb(0 0 0 / 0.35);
+    box-shadow:
+      0 0 0 1px var(--color-asfalto),
+      0 1px 4px rgb(0 0 0 / 0.35);
   }
 
   .marcador-moto__nome {

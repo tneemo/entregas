@@ -21,11 +21,7 @@ export const rotasSetup = new Hono<AppEnv>().post('/', async (c) => {
   }
 
   const db = c.var.db;
-  const existente = await db
-    .select({ id: usuarios.id })
-    .from(usuarios)
-    .where(eq(usuarios.superAdmin, true))
-    .get();
+  const existente = await db.select({ id: usuarios.id }).from(usuarios).where(eq(usuarios.superAdmin, true)).get();
   if (existente) throw new ErroApi(409, 'ja_configurado', 'A plataforma já tem um super admin.');
 
   await garantirDadosUnicos(db, { email: dados.email });

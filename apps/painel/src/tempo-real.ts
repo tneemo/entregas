@@ -105,7 +105,9 @@ class CentralAoVivo {
   private atualizarConsultas(pedidoId?: string) {
     this.consultas.invalidateQueries({ queryKey: ['pedidos', this.empresaId] });
     this.consultas.invalidateQueries({ queryKey: ['motoboys', this.empresaId] });
-    this.consultas.invalidateQueries({ queryKey: pedidoId ? ['pedido', this.empresaId, pedidoId] : ['pedido', this.empresaId] });
+    this.consultas.invalidateQueries({
+      queryKey: pedidoId ? ['pedido', this.empresaId, pedidoId] : ['pedido', this.empresaId],
+    });
   }
 
   private receber(m: MensagemCentral) {

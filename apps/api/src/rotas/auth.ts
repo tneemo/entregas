@@ -5,12 +5,7 @@ import type { AppEnv } from '../tipos.ts';
 import type { Db } from '../db/index.ts';
 import { falhasLogin } from '../db/schema.ts';
 import { HASH_FICTICIO, verificarSenha } from '../auth/cripto.ts';
-import {
-  apagarCookieSessao,
-  criarSessao,
-  definirCookieSessao,
-  encerrarSessao,
-} from '../auth/sessao.ts';
+import { apagarCookieSessao, criarSessao, definirCookieSessao, encerrarSessao } from '../auth/sessao.ts';
 import { ErroApi } from '../erros.ts';
 import { lerCorpo } from '../validar.ts';
 import { exigirLogin } from '../middleware/sessao.ts';

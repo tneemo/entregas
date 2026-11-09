@@ -34,7 +34,12 @@ export function Convite() {
   const mudar = (campo: keyof typeof dados) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setDados({ ...dados, [campo]: e.target.value });
 
-  if (convite.isLoading || carregandoEu) return <TelaPublica><p>Carregando convite…</p></TelaPublica>;
+  if (convite.isLoading || carregandoEu)
+    return (
+      <TelaPublica>
+        <p>Carregando convite…</p>
+      </TelaPublica>
+    );
 
   if (convite.error && !aceitar.isSuccess) {
     return (
@@ -82,7 +87,9 @@ export function Convite() {
         <h1 className="text-3xl">
           Convite para {funcao} na {c.empresa.nomeFantasia}
         </h1>
-        <p className="text-concreto">{ROTULOS.tipoEmpresa[c.empresa.tipo]} em {c.empresa.cidade}.</p>
+        <p className="text-concreto">
+          {ROTULOS.tipoEmpresa[c.empresa.tipo]} em {c.empresa.cidade}.
+        </p>
       </div>
 
       {eu ? (
@@ -92,13 +99,34 @@ export function Convite() {
             das suas outras empresas.
           </p>
           {c.exige.cpf && !eu.usuario.temCpf && (
-            <Campo rotulo="CPF" inputMode="numeric" value={dados.cpf} onChange={mudar('cpf')} erro={erroDoCampo(aceitar.error, 'cpf')} required />
+            <Campo
+              rotulo="CPF"
+              inputMode="numeric"
+              value={dados.cpf}
+              onChange={mudar('cpf')}
+              erro={erroDoCampo(aceitar.error, 'cpf')}
+              required
+            />
           )}
           {c.exige.telefone && !eu.usuario.telefone && (
-            <Campo rotulo="Celular com DDD" type="tel" value={dados.telefone} onChange={mudar('telefone')} erro={erroDoCampo(aceitar.error, 'telefone')} required />
+            <Campo
+              rotulo="Celular com DDD"
+              type="tel"
+              value={dados.telefone}
+              onChange={mudar('telefone')}
+              erro={erroDoCampo(aceitar.error, 'telefone')}
+              required
+            />
           )}
           {c.exige.email && !eu.usuario.email && (
-            <Campo rotulo="E-mail" type="email" value={dados.email} onChange={mudar('email')} erro={erroDoCampo(aceitar.error, 'email')} required />
+            <Campo
+              rotulo="E-mail"
+              type="email"
+              value={dados.email}
+              onChange={mudar('email')}
+              erro={erroDoCampo(aceitar.error, 'email')}
+              required
+            />
           )}
           <AvisoErro erro={aceitar.error} />
           <Botao type="submit" carregando={aceitar.isPending}>
@@ -115,9 +143,24 @@ export function Convite() {
         </div>
       ) : (
         <form onSubmit={enviar} className="flex flex-col gap-4">
-          <Campo rotulo="Nome completo" autoComplete="name" value={dados.nome} onChange={mudar('nome')} erro={erroDoCampo(aceitar.error, 'nome')} required />
+          <Campo
+            rotulo="Nome completo"
+            autoComplete="name"
+            value={dados.nome}
+            onChange={mudar('nome')}
+            erro={erroDoCampo(aceitar.error, 'nome')}
+            required
+          />
           {c.exige.email ? (
-            <Campo rotulo="E-mail" type="email" autoComplete="email" value={dados.email} onChange={mudar('email')} erro={erroDoCampo(aceitar.error, 'email')} required />
+            <Campo
+              rotulo="E-mail"
+              type="email"
+              autoComplete="email"
+              value={dados.email}
+              onChange={mudar('email')}
+              erro={erroDoCampo(aceitar.error, 'email')}
+              required
+            />
           ) : null}
           <Campo
             rotulo={c.exige.telefone ? 'Celular com DDD' : 'Celular com DDD (opcional)'}
@@ -130,7 +173,14 @@ export function Convite() {
             required={c.exige.telefone}
           />
           {c.exige.cpf && (
-            <Campo rotulo="CPF" inputMode="numeric" value={dados.cpf} onChange={mudar('cpf')} erro={erroDoCampo(aceitar.error, 'cpf')} required />
+            <Campo
+              rotulo="CPF"
+              inputMode="numeric"
+              value={dados.cpf}
+              onChange={mudar('cpf')}
+              erro={erroDoCampo(aceitar.error, 'cpf')}
+              required
+            />
           )}
           <Campo
             rotulo="Crie uma senha"

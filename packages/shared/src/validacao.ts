@@ -104,9 +104,7 @@ export function formatarCpf(cpf: string): string {
 
 export function formatarCnpj(cnpj: string): string {
   const c = normalizarCnpj(cnpj);
-  return c.length === 14
-    ? `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}`
-    : cnpj;
+  return c.length === 14 ? `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}` : cnpj;
 }
 
 export function formatarTelefone(e164: string): string {

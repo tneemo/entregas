@@ -91,9 +91,7 @@ describe('convites', () => {
     expect(aceite.status).toBe(201);
 
     const eu = await a.motoboy.cliente.get('/auth/eu');
-    expect(eu.corpo.vinculos.map((v: any) => v.empresa.id).sort()).toEqual(
-      [a.empresa.id, b.empresa.id].sort(),
-    );
+    expect(eu.corpo.vinculos.map((v: any) => v.empresa.id).sort()).toEqual([a.empresa.id, b.empresa.id].sort());
   });
 
   it('não deixa entrar duas vezes na mesma empresa e libera o convite', async () => {

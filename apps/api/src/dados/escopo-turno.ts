@@ -3,12 +3,7 @@
 // motoboy só tem um turno aberto por vez (garantido também por índice no banco).
 
 import { and, count, eq, isNull, lt, notInArray } from 'drizzle-orm';
-import {
-  RETENCAO_POSICOES_DIAS,
-  STATUS_FINAIS,
-  type TurnoResposta,
-  type schemaPosicoes,
-} from '@entregas/shared';
+import { RETENCAO_POSICOES_DIAS, STATUS_FINAIS, type TurnoResposta, type schemaPosicoes } from '@entregas/shared';
 import type { z } from 'zod';
 import type { Db } from '../db/index.ts';
 import { violouUnicidade } from '../db/index.ts';
@@ -46,7 +41,10 @@ export function escopoTurno(db: Db, ctx: ContextoEmpresa) {
     const aberto = await turnoAberto();
     if (!aberto) return { turno: null, emOutraEmpresa: null };
     if (aberto.turno.empresaId === empresaId) {
-      return { turno: { id: aberto.turno.id, iniciadoEm: aberto.turno.iniciadoEm.toISOString() }, emOutraEmpresa: null };
+      return {
+        turno: { id: aberto.turno.id, iniciadoEm: aberto.turno.iniciadoEm.toISOString() },
+        emOutraEmpresa: null,
+      };
     }
     return { turno: null, emOutraEmpresa: { empresaId: aberto.turno.empresaId, nomeFantasia: aberto.nomeFantasia } };
   }

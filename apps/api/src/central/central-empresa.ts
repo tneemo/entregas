@@ -123,14 +123,13 @@ export class CentralEmpresa extends DurableObject<Env> {
   posicoes(): PosicaoMotoboy[] {
     const limite = Date.now() - POSICAO_VALIDA_HORAS * 60 * 60 * 1000;
     this.sql.exec('DELETE FROM ultima_posicao WHERE registrado_em < ?', limite);
-    return this.sql
-      .exec<LinhaPosicao>('SELECT * FROM ultima_posicao ORDER BY nome')
-      .toArray()
-      .map(paraPosicao);
+    return this.sql.exec<LinhaPosicao>('SELECT * FROM ultima_posicao ORDER BY nome').toArray().map(paraPosicao);
   }
 
   private posicao(vinculoId: string): PosicaoMotoboy | null {
-    const linha = this.sql.exec<LinhaPosicao>('SELECT * FROM ultima_posicao WHERE vinculo_id = ?', vinculoId).toArray()[0];
+    const linha = this.sql
+      .exec<LinhaPosicao>('SELECT * FROM ultima_posicao WHERE vinculo_id = ?', vinculoId)
+      .toArray()[0];
     return linha ? paraPosicao(linha) : null;
   }
 

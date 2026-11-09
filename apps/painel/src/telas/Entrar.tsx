@@ -9,9 +9,7 @@ import { AvisoErro, Botao, Campo } from '../componentes/ui.tsx';
 
 export function TelaPublica({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-8 px-4 py-10">
-      {children}
-    </main>
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-8 px-4 py-10">{children}</main>
   );
 }
 
@@ -74,7 +72,11 @@ export function Entrar() {
       </div>
       <FormularioEntrar aoEntrar={() => navegar('/', { replace: true })} />
       <p className="text-sm text-concreto">
-        Primeiro acesso à plataforma? <Link to="/configuracao-inicial" className="text-mercosul underline">Configure o super admin</Link>.
+        Primeiro acesso à plataforma?{' '}
+        <Link to="/configuracao-inicial" className="text-mercosul underline">
+          Configure o super admin
+        </Link>
+        .
       </p>
     </TelaPublica>
   );

@@ -28,7 +28,8 @@ export async function lerCorpo<T extends z.ZodType>(c: Context, schema: T): Prom
         geral ??= problema.message;
         continue;
       }
-      (campos[problema.path.join('.')] ??= []).push(problema.message);
+      const campo = problema.path.join('.');
+      campos[campo] = [...(campos[campo] ?? []), problema.message];
     }
     throw camposInvalidos(campos, geral ?? 'Confira os dados informados.');
   }

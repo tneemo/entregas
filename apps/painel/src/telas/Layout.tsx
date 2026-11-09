@@ -128,6 +128,7 @@ export function Layout() {
           {menuAberto ? 'Fechar menu' : 'Menu'}
         </Botao>
       </header>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: delegação; o clique vem dos links do menu, que já respondem ao teclado. */}
       <aside
         id="menu-lateral"
         className={`${menuAberto ? 'block' : 'hidden'} border-b border-linha bg-papel md:sticky md:top-0 md:block md:h-dvh md:border-r md:border-b-0`}

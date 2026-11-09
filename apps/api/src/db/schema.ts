@@ -166,10 +166,7 @@ export const convites = sqliteTable(
     aceitoPor: text('aceito_por').references(() => usuarios.id),
     revogadoEm: integer('revogado_em', { mode: 'timestamp_ms' }),
   },
-  (t) => [
-    uniqueIndex('convites_token_unq').on(t.tokenHash),
-    index('convites_empresa_idx').on(t.empresaId),
-  ],
+  (t) => [uniqueIndex('convites_token_unq').on(t.tokenHash), index('convites_empresa_idx').on(t.empresaId)],
 );
 
 /** Destinatários já atendidos, para preencher o pedido pelo telefone. */

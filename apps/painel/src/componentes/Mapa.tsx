@@ -52,7 +52,7 @@ export function Mapa({
   rotulo: string;
   className?: string;
 }) {
-  const elemento = useRef<HTMLDivElement>(null);
+  const elemento = useRef<HTMLElement>(null);
   const mapa = useRef<L.Map | null>(null);
   const camadas = useRef(new Map<string, { marcador: L.Marker; circulo: L.Circle | null; chave: string }>());
   const enquadrou = useRef(false);
@@ -110,7 +110,11 @@ export function Mapa({
     if (!enquadrou.current && marcadores.length > 0) {
       enquadrou.current = true;
       if (marcadores.length === 1) m.setView([marcadores[0]!.latitude, marcadores[0]!.longitude], 16);
-      else m.fitBounds(L.latLngBounds(marcadores.map((d) => [d.latitude, d.longitude])), { padding: [48, 48], maxZoom: 16 });
+      else
+        m.fitBounds(L.latLngBounds(marcadores.map((d) => [d.latitude, d.longitude])), {
+          padding: [48, 48],
+          maxZoom: 16,
+        });
     } else if (seguir && marcadores.length === 1) {
       m.panTo([marcadores[0]!.latitude, marcadores[0]!.longitude]);
     }
@@ -121,5 +125,11 @@ export function Mapa({
     if (alvo && mapa.current) mapa.current.flyTo(alvo.marcador.getLatLng(), Math.max(mapa.current.getZoom(), 16));
   }, [foco]);
 
-  return <div ref={elemento} role="region" aria-label={rotulo} className={`z-0 overflow-hidden rounded-md border border-linha bg-linha/40 ${className}`} />;
+  return (
+    <section
+      ref={elemento}
+      aria-label={rotulo}
+      className={`z-0 overflow-hidden rounded-md border border-linha bg-linha/40 ${className}`}
+    />
+  );
 }

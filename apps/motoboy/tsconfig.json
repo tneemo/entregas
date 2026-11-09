@@ -6,8 +6,5 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true
   },
-  "include": [
-    "app",
-    "src"
-  ]
+  "include": ["app", "src"]
 }

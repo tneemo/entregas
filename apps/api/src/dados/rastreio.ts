@@ -6,12 +6,7 @@
 // pedidos, e o link expira RASTREIO_HORAS_APOS_CONCLUSAO depois que o pedido termina.
 
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import {
-  RASTREIO_HORAS_APOS_CONCLUSAO,
-  statusFinal,
-  type RastreioResposta,
-  type StatusPedido,
-} from '@entregas/shared';
+import { RASTREIO_HORAS_APOS_CONCLUSAO, statusFinal, type RastreioResposta, type StatusPedido } from '@entregas/shared';
 import type { Db } from '../db/index.ts';
 import { empresas, eventosPedido, paradas, pedidos, usuarios, vinculos } from '../db/schema.ts';
 import { ErroApi, naoEncontrado } from '../erros.ts';
@@ -71,7 +66,8 @@ export async function buscarRastreio(db: Db, token: string, agora = Date.now()):
 
   const terminou = statusFinal(p.status);
   const e = destino?.endereco;
-  const motoboy = MOSTRA_MOTOBOY.includes(p.status) && linha.motoboyNome ? linha.motoboyNome.trim().split(/\s+/)[0]! : null;
+  const motoboy =
+    MOSTRA_MOTOBOY.includes(p.status) && linha.motoboyNome ? linha.motoboyNome.trim().split(/\s+/)[0]! : null;
 
   return {
     resposta: {

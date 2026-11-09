@@ -41,7 +41,13 @@ export function ConfiguracaoInicial() {
       </div>
       <form onSubmit={enviar} className="flex flex-col gap-4">
         <Campo rotulo="Token de configuração" value={dados.token} onChange={mudar('token')} required />
-        <Campo rotulo="Seu nome" value={dados.nome} onChange={mudar('nome')} erro={erroDoCampo(criar.error, 'nome')} required />
+        <Campo
+          rotulo="Seu nome"
+          value={dados.nome}
+          onChange={mudar('nome')}
+          erro={erroDoCampo(criar.error, 'nome')}
+          required
+        />
         <Campo
           rotulo="E-mail"
           type="email"

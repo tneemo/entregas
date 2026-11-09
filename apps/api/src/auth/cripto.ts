@@ -6,8 +6,7 @@ const codificador = new TextEncoder();
 const ITERACOES_PBKDF2 = 100_000;
 
 /** Hash com formato válido e senha desconhecida: iguala o tempo de resposta quando o login não existe. */
-export const HASH_FICTICIO =
-  'pbkdf2-sha256$100000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+export const HASH_FICTICIO = 'pbkdf2-sha256$100000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 export function paraBase64Url(bytes: Uint8Array): string {
   let binario = '';
@@ -35,16 +34,12 @@ function iguaisTempoConstante(a: Uint8Array<ArrayBuffer>, b: Uint8Array<ArrayBuf
 
 /** Compara dois segredos em texto sem vazar informação pelo tempo de resposta. */
 export async function segredosIguais(a: string, b: string): Promise<boolean> {
-  const [ha, hb] = await Promise.all(
-    [a, b].map((s) => crypto.subtle.digest('SHA-256', codificador.encode(s))),
-  );
+  const [ha, hb] = await Promise.all([a, b].map((s) => crypto.subtle.digest('SHA-256', codificador.encode(s))));
   return iguaisTempoConstante(new Uint8Array(ha!), new Uint8Array(hb!));
 }
 
 async function derivar(senha: string, sal: Uint8Array<ArrayBuffer>, iteracoes: number) {
-  const chave = await crypto.subtle.importKey('raw', codificador.encode(senha), 'PBKDF2', false, [
-    'deriveBits',
-  ]);
+  const chave = await crypto.subtle.importKey('raw', codificador.encode(senha), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits(
     { name: 'PBKDF2', hash: 'SHA-256', salt: sal, iterations: iteracoes },
     chave,

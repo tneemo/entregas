@@ -30,13 +30,33 @@ interface SituacaoRastreio {
 export function situacaoRastreio(status: StatusPedido, empresa: string): SituacaoRastreio {
   switch (status) {
     case 'pendente':
-      return { titulo: 'Pedido recebido', texto: `A ${empresa} recebeu seu pedido e vai chamar um entregador.`, etapa: 0, problema: false };
+      return {
+        titulo: 'Pedido recebido',
+        texto: `A ${empresa} recebeu seu pedido e vai chamar um entregador.`,
+        etapa: 0,
+        problema: false,
+      };
     case 'atribuido':
-      return { titulo: 'Pedido recebido', texto: 'Um entregador foi chamado para buscar seu pedido.', etapa: 0, problema: false };
+      return {
+        titulo: 'Pedido recebido',
+        texto: 'Um entregador foi chamado para buscar seu pedido.',
+        etapa: 0,
+        problema: false,
+      };
     case 'aceito':
-      return { titulo: 'Entregador confirmado', texto: 'O entregador vai buscar seu pedido.', etapa: 1, problema: false };
+      return {
+        titulo: 'Entregador confirmado',
+        texto: 'O entregador vai buscar seu pedido.',
+        etapa: 1,
+        problema: false,
+      };
     case 'coletando':
-      return { titulo: 'Buscando seu pedido', texto: 'O entregador está indo buscar seu pedido.', etapa: 1, problema: false };
+      return {
+        titulo: 'Buscando seu pedido',
+        texto: 'O entregador está indo buscar seu pedido.',
+        etapa: 1,
+        problema: false,
+      };
     case 'em_rota':
       return { titulo: 'Saiu para entrega', texto: 'O entregador está a caminho.', etapa: 2, problema: false };
     case 'entregue':
@@ -49,11 +69,21 @@ export function situacaoRastreio(status: StatusPedido, empresa: string): Situaca
         problema: true,
       };
     case 'em_devolucao':
-      return { titulo: 'Entrega não realizada', texto: `O pedido está voltando para a ${empresa}.`, etapa: 2, problema: true };
+      return {
+        titulo: 'Entrega não realizada',
+        texto: `O pedido está voltando para a ${empresa}.`,
+        etapa: 2,
+        problema: true,
+      };
     case 'devolvido':
       return { titulo: 'Entrega não realizada', texto: `O pedido voltou para a ${empresa}.`, etapa: 2, problema: true };
     case 'cancelado':
-      return { titulo: 'Pedido cancelado', texto: `Este pedido foi cancelado. Em caso de dúvida, fale com a ${empresa}.`, etapa: 0, problema: true };
+      return {
+        titulo: 'Pedido cancelado',
+        texto: `Este pedido foi cancelado. Em caso de dúvida, fale com a ${empresa}.`,
+        etapa: 0,
+        problema: true,
+      };
   }
 }
 

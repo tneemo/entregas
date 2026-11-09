@@ -30,8 +30,7 @@ export function LinkConvite({
     <div className="flex flex-col gap-3 border-l-4 border-sinal bg-white p-4" aria-live="polite">
       <p className="text-[15px]">
         Convite de <strong>{funcao}</strong> criado. Envie o link para a pessoa. Ele vale até{' '}
-        {dataCurta(convite.expiraEm)} e só pode ser usado uma vez; depois de fechar este aviso ele não aparece de
-        novo.
+        {dataCurta(convite.expiraEm)} e só pode ser usado uma vez; depois de fechar este aviso ele não aparece de novo.
       </p>
       <input
         readOnly

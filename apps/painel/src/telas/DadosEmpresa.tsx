@@ -11,7 +11,13 @@ import {
 } from '@entregas/shared';
 import { api } from '../api.ts';
 import { AvisoErro, Botao, Campo, Selecao, erroDoCampo } from '../componentes/ui.tsx';
-import { EnderecoCampos, enderecoVazio, paraEnderecoForm, useDadosEmpresa, type EnderecoForm } from '../componentes/pedido.tsx';
+import {
+  EnderecoCampos,
+  enderecoVazio,
+  paraEnderecoForm,
+  useDadosEmpresa,
+  type EnderecoForm,
+} from '../componentes/pedido.tsx';
 
 export function DadosEmpresa() {
   const { empresaId = '' } = useParams();
@@ -105,7 +111,9 @@ export function DadosEmpresa() {
             <Selecao
               rotulo="Prazo para o motoboy aceitar"
               value={regras.prazoAceiteMin ?? ''}
-              onChange={(ev) => setRegras({ ...regras, prazoAceiteMin: ev.target.value ? Number(ev.target.value) : null })}
+              onChange={(ev) =>
+                setRegras({ ...regras, prazoAceiteMin: ev.target.value ? Number(ev.target.value) : null })
+              }
               erro={erroDoCampo(salvar.error, 'prazoAceiteMin')}
             >
               <option value="">Sem prazo</option>
@@ -119,8 +127,8 @@ export function DadosEmpresa() {
                 ))}
             </Selecao>
             <p className="mt-1 text-sm text-concreto">
-              Se o motoboy não aceitar nem recusar nesse tempo, o pedido volta sozinho para a fila sem motoboy (conferido
-              a cada minuto). Vale para os pedidos atribuídos depois de salvar.
+              Se o motoboy não aceitar nem recusar nesse tempo, o pedido volta sozinho para a fila sem motoboy
+              (conferido a cada minuto). Vale para os pedidos atribuídos depois de salvar.
             </p>
           </div>
           <label className="flex max-w-xl items-start gap-3">

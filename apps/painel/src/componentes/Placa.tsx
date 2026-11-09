@@ -2,7 +2,11 @@
  * Identidade da empresa no formato de uma placa de moto em categoria aluguel:
  * faixa azul em cima, caracteres vermelhos. É o único elemento "de marca" do painel.
  */
-export function Placa({ texto, faixa = 'PARANÁ', tamanho = 'normal' }: {
+export function Placa({
+  texto,
+  faixa = 'PARANÁ',
+  tamanho = 'normal',
+}: {
   texto: string;
   faixa?: string;
   tamanho?: 'normal' | 'grande';
