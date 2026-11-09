@@ -15,7 +15,7 @@ import { rotasTurno } from './rotas/turno.ts';
 import { rotasConvites } from './rotas/convites.ts';
 import { rotasCentral } from './rotas/central.ts';
 import { rotasRastreio } from './rotas/rastreio.ts';
-import { expurgarPosicoes } from './dados/escopo-turno.ts';
+import { executarCron } from './tarefas.ts';
 
 const app = new Hono<AppEnv>().basePath('/api/v1');
 
@@ -77,10 +77,8 @@ export default {
     if (pathname.startsWith('/r/')) return paginaRastreio(request, env);
     return app.fetch(request, env, ctx);
   },
-  /** Cron diário (wrangler.jsonc): retenção dos pontos de GPS. */
-  async scheduled(_evento, env, ctx) {
-    ctx.waitUntil(
-      expurgarPosicoes(criarDb(env.DB)).then((apagados) => console.log(`GPS expurgado: ${apagados} pontos`)),
-    );
+  /** Cron Triggers do wrangler.jsonc: expurgo diário de GPS e prazo de aceite a cada minuto. */
+  async scheduled(evento, env, ctx) {
+    ctx.waitUntil(executarCron(evento.cron, env));
   },
 } satisfies ExportedHandler<Env>;

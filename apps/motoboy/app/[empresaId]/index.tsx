@@ -59,6 +59,11 @@ function CartaoEntrega({ empresaId, pedido }: { empresaId: string; pedido: Pedid
       <Text style={texto.corpo}>
         {d.logradouro}, {d.numero}, {d.bairro}
       </Text>
+      {pedido.status === 'atribuido' && pedido.aceiteAte ? (
+        <Text style={[texto.apoio, { fontWeight: '700', color: cores.asfalto }]}>
+          Aceite até {horaCurta(pedido.aceiteAte)}
+        </Text>
+      ) : null}
       <Text style={texto.apoio}>
         {pedido.formaPagamento === 'pago'
           ? 'Já pago: não cobrar'

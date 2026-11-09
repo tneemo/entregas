@@ -36,6 +36,12 @@ O painel abre em http://localhost:5173 (a API roda em http://localhost:8787 e o 
 O mapa ao vivo fica em **Mapa ao vivo** no menu. O link de acompanhamento do cliente (`/r/<token>`) aparece no
 detalhe do pedido, junto do código de entrega.
 
+O `wrangler dev` não dispara os crons sozinho. Para vencer na hora os prazos de aceite (cron de cada minuto):
+
+```bash
+curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"
+```
+
 No primeiro acesso, abra **/configuracao-inicial** e use o `SETUP_TOKEN` do `.dev.vars` para criar o super admin.
 Depois: cadastre uma empresa, envie o link de convite ao administrador dela, e ele convida despachantes e motoboys.
 

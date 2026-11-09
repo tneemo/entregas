@@ -89,6 +89,9 @@ function LinhaPedido({ empresaId, pedido, concluido }: { empresaId: string; pedi
           <div className="flex flex-col items-start gap-1">
             <SeloStatus status={pedido.status} />
             {pedido.motoboy && <span className="text-sm">{pedido.motoboy.nome}</span>}
+            {pedido.status === 'atribuido' && pedido.aceiteAte && (
+              <span className="text-sm text-concreto">Aceite até {horaCurta(pedido.aceiteAte)}</span>
+            )}
           </div>
         )}
       </div>

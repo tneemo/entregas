@@ -119,7 +119,7 @@ flowchart LR
 - **Link de rastreio**: `pedidos.token_rastreio` (128 bits aleatórios) guardado em claro, porque a central reenvia o link; dá só leitura do status daquele pedido. A resposta não traz nome nem telefone do destinatário; código, endereço e cobrança somem quando o pedido termina, e o link expira 48 h depois. A página é uma segunda entrada do build do painel (`apps/painel/rastreio.html`), leve (sem React Query, roteador nem zod; o mapa só baixa em rota) e servida pelo Worker em `/r/*`.
 - **R2**: fotos de comprovante e documentos do motoboy (acesso por URL assinada de curta duração).
 - **Queues**: entrega confiável de webhooks e processamento de eventos do iFood.
-- **Cron Triggers / Alarms**: polling do iFood (via alarm de DO, intervalo de 30s), alerta de documentos vencendo, geração da fatura mensal de comissão, expurgo de GPS (LGPD).
+- **Cron Triggers / Alarms**: polling do iFood (via alarm de DO, intervalo de 30s), alerta de documentos vencendo, geração da fatura mensal de comissão, expurgo de GPS (LGPD, diário) e prazo de aceite dos pedidos (a cada minuto). As tarefas ficam em `apps/api/src/tarefas.ts`.
 - **Auth** (implementada na Fase 0, sem biblioteca externa): senha com PBKDF2-SHA256 (100 mil iterações, máximo do runtime) via Web Crypto; sessões opacas guardadas como hash SHA-256 no D1, válidas por 30 dias com renovação diária. Painel usa cookie HttpOnly/Secure/SameSite=Lax; app do motoboy usa `Authorization: Bearer`. Login por e-mail, telefone ou CPF; bloqueio de 15 min após 5 falhas. Entrada na empresa só por convite (link de uso único, 7 dias, guardado como hash). Proteção CSRF por `Sec-Fetch-Site`/`Origin` + exigência de JSON.
 
 ### App do motoboy (Expo)
@@ -165,10 +165,12 @@ stateDiagram-v2
 - Pedido tem **paradas** (coleta → uma ou mais entregas), essencial para motofrete B2B; o status do pedido é derivado das paradas.
 - Toda transição gera um **evento** com usuário, data/hora e coordenada GPS.
 - Depois de `em_rota`, cancelamento vira **devolução** (o item já saiu).
+- **Prazo de aceite** (opcional, por empresa, 1 a 60 min): gravado no pedido na atribuição (`pedidos.aceite_ate`); trocar de motoboy recomeça a contagem e qualquer outra mudança a encerra. Um cron a cada minuto devolve à fila os vencidos, com o evento `expirar_aceite` no nome do motoboy que não respondeu, e avisa o painel pelo `CentralEmpresa`. Ninguém executa essa ação pela API.
 
 ### Comprovante de entrega
-- **Código de 4 dígitos** gerado por pedido, enviado ao destinatário junto com o link de rastreio. O motoboy digita para concluir.
-- **Foto** obrigatória ou opcional (configurável por empresa); obrigatória quando não há código (ex.: deixou na portaria) e em toda falha.
+- **Código de 4 dígitos** gerado por pedido, enviado ao destinatário junto com o link de rastreio. O motoboy digita para concluir; 5 erros bloqueiam a entrega pelo app e só a central confirma.
+- **Entrega sem o código** (ex.: deixou na portaria): só pelo app, com foto e "com quem ou onde ficou". Fica bloqueada junto com o código e aparece destacada no painel.
+- **Foto**: sempre obrigatória na falha e na entrega sem código; na entrega com código, opcional ou obrigatória conforme a empresa (Dados da empresa → Regras de entrega). Vale só a foto enviada depois da última mudança de status, então uma nova tentativa pede foto nova. A central registra pelo painel sem foto (o motoboy pode ter ligado).
 
 ---
 
@@ -250,7 +252,7 @@ Monorepo com **npm workspaces**; TypeScript em tudo; testes com Vitest (`@cloudf
 | Fase | Entrega |
 |---|---|
 | **0 — Fundação** ✅ | Monorepo, Worker + D1, auth, camada multi-tenant com testes de isolamento, cadastro de empresas/usuários/vínculos, convites, painel (login, empresas, equipe, aceite de convite) |
-| **1 — Núcleo** | **Parte 1 ✅** pedidos pelo painel, ciclo de status com histórico, despacho manual, código de entrega (bloqueia após 5 erros), cadastro de clientes pelo telefone, endereço da empresa como coleta padrão, CEP via ViaCEP. **Parte 2 ✅** app Android do motoboy em Expo (login, turno único por pessoa, GPS em segundo plano com aviso fixo e fila offline, entregas, código, foto no R2), retenção de GPS de 90 dias por cron. Pendente: teste em aparelho real e notificação push. **Parte 3 ✅** Durable Object `CentralEmpresa` com WebSocket Hibernation, mapa ao vivo no painel (posições e turnos em tempo real, fila de pedidos atualizada sozinha), link público de rastreio `/r/<token>` (status, código, mapa do entregador só em rota, expira 48 h após concluir) e link + código no botão do WhatsApp. Mapa provisório em Leaflet + OpenStreetMap até existir a chave do Google Maps |
+| **1 — Núcleo** | **Parte 1 ✅** pedidos pelo painel, ciclo de status com histórico, despacho manual, código de entrega (bloqueia após 5 erros), cadastro de clientes pelo telefone, endereço da empresa como coleta padrão, CEP via ViaCEP. **Parte 2 ✅** app Android do motoboy em Expo (login, turno único por pessoa, GPS em segundo plano com aviso fixo e fila offline, entregas, código, foto no R2), retenção de GPS de 90 dias por cron. Pendente: teste em aparelho real e notificação push. **Parte 3 ✅** Durable Object `CentralEmpresa` com WebSocket Hibernation, mapa ao vivo no painel (posições e turnos em tempo real, fila de pedidos atualizada sozinha), link público de rastreio `/r/<token>` (status, código, mapa do entregador só em rota, expira 48 h após concluir) e link + código no botão do WhatsApp. Mapa provisório em Leaflet + OpenStreetMap até existir a chave do Google Maps. **Parte 4 ✅** regras de entrega por empresa: foto obrigatória na falha e na entrega sem código (e, se a empresa quiser, em toda entrega), entrega sem código com foto, prazo de aceite com volta automática à fila |
 | **2 — Dinheiro** | Cobrança na entrega, acerto, remuneração, frete por km, comissão + fatura mensal |
 | **3 — Entradas** | Link público de pedido, portal do cliente contratante, API pública + webhooks |
 | **4 — Integrações** | iFood (requer cadastro e homologação no portal de desenvolvedores do iFood), PDVs, despacho automático, roteirização multi-paradas, WhatsApp API oficial, Pix dinâmico |

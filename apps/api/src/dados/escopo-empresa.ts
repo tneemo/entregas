@@ -45,7 +45,13 @@ export function escopoEmpresa(db: Db, ctx: ContextoEmpresa) {
       .where(eq(empresas.id, empresaId))
       .get();
     if (!linha) throw naoEncontrado('Empresa não encontrada.');
-    return { ...empresaResposta(linha.empresa, linha.cidade), endereco: linha.empresa.endereco ?? null };
+    const e = linha.empresa;
+    return {
+      ...empresaResposta(e, linha.cidade),
+      endereco: e.endereco ?? null,
+      fotoEntregaObrigatoria: e.fotoEntregaObrigatoria,
+      prazoAceiteMin: e.prazoAceiteMin,
+    };
   };
 
   const buscarMembro = (vinculoId: string) =>

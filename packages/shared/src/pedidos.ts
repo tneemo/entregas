@@ -69,6 +69,8 @@ export const TRANSICOES = {
   },
   aceitar: { de: ['atribuido'], para: 'aceito', quem: ['motoboy'], rotulo: 'Aceitar' },
   recusar: { de: ['atribuido'], para: 'pendente', quem: ['motoboy'], rotulo: 'Recusar' },
+  // Só o sistema (cron por minuto), quando o prazo de aceite da empresa acaba sem resposta.
+  expirar_aceite: { de: ['atribuido'], para: 'pendente', quem: [], rotulo: 'Prazo de aceite esgotado' },
   // A central pode pular o aceite: há empresas cujos motoboys recebem o pedido pelo WhatsApp.
   iniciar_coleta: {
     de: ['atribuido', 'aceito'],
@@ -83,6 +85,15 @@ export const TRANSICOES = {
     quem: ['motoboy', 'central'],
     exige: 'codigo',
     rotulo: 'Confirmar entrega',
+  },
+  // Cliente sem o código (ex.: deixou na portaria): foto obrigatória e o motivo diz com quem ficou.
+  // Só o motoboy: a central vê o código e pode confirmar pela ação normal.
+  entregar_sem_codigo: {
+    de: ['em_rota'],
+    para: 'entregue',
+    quem: ['motoboy'],
+    exige: 'motivo',
+    rotulo: 'Entregar sem o código',
   },
   falhar: {
     de: ['em_rota'],
@@ -150,9 +161,11 @@ export const ROTULOS_EVENTO: Record<AcaoPedido | 'criar', string> = {
   desatribuir: 'Retirado do motoboy',
   aceitar: 'Motoboy aceitou',
   recusar: 'Motoboy recusou',
+  expirar_aceite: 'Sem resposta do motoboy no prazo',
   iniciar_coleta: 'A caminho da coleta',
   coletar: 'Coletado, saiu para entrega',
   entregar: 'Entregue ao cliente',
+  entregar_sem_codigo: 'Entregue sem o código',
   falhar: 'Não foi possível entregar',
   nova_tentativa: 'Nova tentativa de entrega',
   devolver: 'Voltando à origem',
@@ -162,6 +175,32 @@ export const ROTULOS_EVENTO: Record<AcaoPedido | 'criar', string> = {
 
 export const TIPOS_FOTO = ['coleta', 'entrega', 'falha'] as const;
 export type TipoFoto = (typeof TIPOS_FOTO)[number];
+
+/** Tipo da foto que acompanha cada ação com comprovante. */
+export const FOTO_DA_ACAO = {
+  entregar: 'entrega',
+  entregar_sem_codigo: 'entrega',
+  falhar: 'falha',
+} as const satisfies Partial<Record<AcaoPedido, TipoFoto>>;
+
+export interface RegrasEntrega {
+  /** Foto também na entrega com código (sem isso, nesse caso ela é opcional). */
+  fotoEntregaObrigatoria: boolean;
+  /** Minutos que o motoboy tem para aceitar ou recusar; null = sem prazo. */
+  prazoAceiteMin: number | null;
+}
+
+/**
+ * Quando o motoboy precisa mandar foto: sempre na falha e na entrega sem código;
+ * na entrega com código, se a empresa exigir. A central não precisa (age por telefone).
+ */
+export function fotoObrigatoria(acao: AcaoPedido, regras: Pick<RegrasEntrega, 'fotoEntregaObrigatoria'>): boolean {
+  if (acao === 'falhar' || acao === 'entregar_sem_codigo') return true;
+  return acao === 'entregar' && regras.fotoEntregaObrigatoria;
+}
+
+/** Opções de prazo de aceite oferecidas no painel (minutos). */
+export const PRAZOS_ACEITE_MIN = [2, 3, 5, 10, 15, 30] as const;
 
 /** Fotos aceitas pela API (tamanho máximo, em bytes). */
 export const FOTO_MAX_BYTES = 5 * 1024 * 1024;

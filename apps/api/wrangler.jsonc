@@ -7,11 +7,12 @@
 
   // Painel (React) servido pelo mesmo Worker: /api/* vai para o código, o resto para os arquivos estáticos.
   // /r/* (rastreio público) passa pelo código para servir a página leve de acompanhamento.
+  // /__scheduled só existe no wrangler dev --test-scheduled (dispara o cron à mão); em produção dá 404.
   "assets": {
     "directory": "../painel/dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/r/*"]
+    "run_worker_first": ["/api/*", "/r/*", "/__scheduled"]
   },
 
   // Tempo real: um CentralEmpresa por empresa (mapa ao vivo e rastreio por WebSocket).
@@ -34,7 +35,9 @@
   "r2_buckets": [{ "binding": "FOTOS", "bucket_name": "entregas-fotos" }],
 
   // Todo dia às 03:00 de Cascavel (06:00 UTC): apaga pontos de GPS antigos (LGPD).
-  "triggers": { "crons": ["0 6 * * *"] },
+  // A cada minuto: pedidos sem aceite no prazo da empresa voltam para a fila.
+  // Os textos precisam bater com CRONS em src/tarefas.ts.
+  "triggers": { "crons": ["0 6 * * *", "* * * * *"] },
 
   "vars": {
     "AMBIENTE": "desenvolvimento",

@@ -7,7 +7,7 @@ import type {
   TipoEmpresa,
   TipoVinculo,
 } from './papeis.ts';
-import type { AcaoPedido, FormaPagamento, StatusPedido, TipoFoto } from './pedidos.ts';
+import type { AcaoPedido, FormaPagamento, RegrasEntrega, StatusPedido, TipoFoto } from './pedidos.ts';
 
 export interface ErroResposta {
   erro: { codigo: string; mensagem: string; campos?: Record<string, string[]> };
@@ -110,7 +110,7 @@ export interface EnderecoResposta {
   referencia?: string;
 }
 
-export interface DadosEmpresaResposta extends EmpresaResposta {
+export interface DadosEmpresaResposta extends EmpresaResposta, RegrasEntrega {
   endereco: EnderecoResposta | null;
 }
 
@@ -141,6 +141,8 @@ export interface PedidoResumo {
   motoboy: { vinculoId: string; nome: string } | null;
   formaPagamento: FormaPagamento;
   valorACobrarCentavos: number;
+  /** Atribuído e aguardando aceite: depois desta hora volta sozinho para a fila. */
+  aceiteAte: string | null;
 }
 
 export interface EventoPedidoResposta {
@@ -167,6 +169,8 @@ export interface PedidoDetalhe extends PedidoResumo {
   codigoBloqueado: boolean;
   /** O que quem fez a requisição pode fazer agora. */
   acoes: AcaoPedido[];
+  /** Quais dessas ações exigem foto de quem pediu (vazio para a central). */
+  fotoObrigatoria: AcaoPedido[];
   eventos: EventoPedidoResposta[];
   fotos: FotoResposta[];
   /** Link público de acompanhamento (só a central recebe, para enviar ao cliente). */

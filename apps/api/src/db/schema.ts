@@ -66,6 +66,9 @@ export const empresas = sqliteTable(
     email: text('email'),
     /** Endereço da loja/base: sugestão padrão de coleta nos pedidos. */
     endereco: text('endereco', { mode: 'json' }).$type<Endereco>(),
+    /** Regras de entrega (RegrasEntrega em @entregas/shared). */
+    fotoEntregaObrigatoria: integer('foto_entrega_obrigatoria', { mode: 'boolean' }).notNull().default(false),
+    prazoAceiteMin: integer('prazo_aceite_min'),
     status: text('status', { enum: STATUS_EMPRESA }).notNull().default('ativa'),
     criadoEm: criadoEm(),
     atualizadoEm: atualizadoEm(),
@@ -213,8 +216,13 @@ export const pedidos = sqliteTable(
      * Só dá acesso de leitura ao status deste pedido.
      */
     tokenRastreio: text('token_rastreio').notNull(),
-    /** Último motivo de falha ou cancelamento. */
+    /** Último motivo de falha ou cancelamento (ou com quem ficou, na entrega sem código). */
     motivo: text('motivo'),
+    /**
+     * Prazo para o motoboy aceitar, gravado na atribuição (mudar a regra da empresa não
+     * mexe em quem já está esperando). Só preenchido enquanto o status é "atribuido".
+     */
+    aceiteAte: integer('aceite_ate', { mode: 'timestamp_ms' }),
     criadoPor: text('criado_por')
       .notNull()
       .references(() => usuarios.id),
@@ -227,6 +235,8 @@ export const pedidos = sqliteTable(
     uniqueIndex('pedidos_token_rastreio_unq').on(t.tokenRastreio),
     index('pedidos_empresa_status_idx').on(t.empresaId, t.status),
     index('pedidos_motoboy_status_idx').on(t.motoboyVinculoId, t.status),
+    // O cron de cada minuto só olha os pedidos esperando aceite com prazo.
+    index('pedidos_aceite_ate_idx').on(t.aceiteAte).where(sql`aceite_ate IS NOT NULL`),
   ],
 );
 

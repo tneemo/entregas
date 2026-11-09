@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, Linking, ScrollView, Text, View } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  FOTO_DA_ACAO,
   ROTULOS_PAGAMENTO,
   TRANSICOES,
   formatarReais,
@@ -21,6 +22,41 @@ import { posicaoAtual } from '../../src/rastreio.ts';
 import { cores, espaco, texto } from '../../src/tema.ts';
 
 const MOTIVOS_FALHA = ['Cliente não atendeu', 'Endereço não encontrado', 'Cliente recusou o pedido', 'Local fechado'];
+const MOTIVOS_SEM_CODIGO = ['Deixei na portaria', 'Entreguei a um vizinho', 'Entreguei a outra pessoa da casa'];
+
+/** Ações que abrem formulário (pedem código ou motivo, e às vezes foto). */
+type AcaoComFormulario = 'entregar' | 'entregar_sem_codigo' | 'falhar';
+
+const TITULO_FORMULARIO: Record<AcaoComFormulario, string> = {
+  entregar: 'Confirmar entrega',
+  entregar_sem_codigo: 'Entregar sem o código',
+  falhar: 'Não foi possível entregar',
+};
+
+function tipoDaFoto(acao: AcaoPedido): TipoFoto {
+  return acao in FOTO_DA_ACAO ? FOTO_DA_ACAO[acao as keyof typeof FOTO_DA_ACAO] : 'entrega';
+}
+
+/** Contagem regressiva do prazo para aceitar; depois dele o pedido volta para a central. */
+function PrazoAceite({ ate }: { ate: string }) {
+  const [agora, setAgora] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setAgora(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, []);
+  const restante = Math.max(0, Date.parse(ate) - agora);
+  if (restante === 0) {
+    return <Aviso>Prazo para aceitar acabou: o pedido vai voltar para a central.</Aviso>;
+  }
+  const min = Math.floor(restante / 60_000);
+  const seg = Math.floor((restante % 60_000) / 1_000);
+  const hora = new Date(ate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return (
+    <Aviso tipo="info">
+      {`Aceite ou recuse até ${hora} (faltam ${min}:${String(seg).padStart(2, '0')}). Sem resposta, o pedido volta para a central.`}
+    </Aviso>
+  );
+}
 
 function enderecoTexto(p: ParadaResposta) {
   const e = p.endereco;
@@ -57,15 +93,23 @@ function Parada({ titulo, parada }: { titulo: string; parada: ParadaResposta }) 
   );
 }
 
-/** Formulário das ações que pedem dado: código na entrega, motivo na falha. Foto opcional. */
+/**
+ * Formulário das ações que pedem dado: código na entrega, com quem ficou na entrega sem
+ * código, motivo na falha. A foto é obrigatória quando a API diz (fotoObrigatoria).
+ */
 function FormularioAcao({
   acao,
+  fotoObrigatoria,
+  aoSemCodigo,
   aoConfirmar,
   aoVoltar,
   enviando,
   erro,
 }: {
-  acao: 'entregar' | 'falhar';
+  acao: AcaoComFormulario;
+  fotoObrigatoria: boolean;
+  /** Só na entrega com código, quando a entrega sem ele é permitida. */
+  aoSemCodigo?: () => void;
   aoConfirmar: (dados: DadosAcaoPedido, fotoUri: string | null) => void;
   aoVoltar: () => void;
   enviando: boolean;
@@ -88,8 +132,18 @@ function FormularioAcao({
     }
   }
 
+  const motivos = acao === 'falhar' ? MOTIVOS_FALHA : MOTIVOS_SEM_CODIGO;
+  const dadoOk = acao === 'entregar' ? codigo.length === 4 : motivo.trim().length >= 3;
+  const rotuloFoto =
+    acao === 'falhar' ? 'Fotografar o local' : acao === 'entregar_sem_codigo' ? 'Fotografar onde ficou' : 'Fotografar comprovante';
+
   return (
-    <Secao titulo={acao === 'entregar' ? 'Confirmar entrega' : 'Não foi possível entregar'}>
+    <Secao titulo={TITULO_FORMULARIO[acao]}>
+      {acao === 'entregar_sem_codigo' ? (
+        <Text style={texto.apoio}>
+          Use quando o cliente não pôde informar o código. A foto é obrigatória e a central vê o registro.
+        </Text>
+      ) : null}
       {acao === 'entregar' ? (
         <Campo
           rotulo="Código de 4 dígitos que o cliente informou"
@@ -102,11 +156,11 @@ function FormularioAcao({
         />
       ) : (
         <>
-          <Text style={texto.corpo}>O que aconteceu?</Text>
-          {MOTIVOS_FALHA.map((m) => (
+          <Text style={texto.corpo}>{acao === 'falhar' ? 'O que aconteceu?' : 'Com quem ou onde ficou?'}</Text>
+          {motivos.map((m) => (
             <Botao key={m} titulo={m} variante={motivo === m ? 'principal' : 'secundario'} aoTocar={() => setMotivo(m)} />
           ))}
-          <Campo rotulo="Ou descreva" value={MOTIVOS_FALHA.includes(motivo) ? '' : motivo} onChangeText={setMotivo} erro={erroCampo} />
+          <Campo rotulo="Ou descreva" value={motivos.includes(motivo) ? '' : motivo} onChangeText={setMotivo} erro={erroCampo} />
         </>
       )}
       {foto ? (
@@ -114,18 +168,22 @@ function FormularioAcao({
       ) : null}
       {erroFoto ? <Aviso>{erroFoto}</Aviso> : null}
       <Botao
-        titulo={foto ? 'Tirar outra foto' : acao === 'entregar' ? 'Fotografar comprovante (opcional)' : 'Fotografar o local (opcional)'}
-        variante="secundario"
+        titulo={foto ? 'Tirar outra foto' : fotoObrigatoria ? rotuloFoto : `${rotuloFoto} (opcional)`}
+        variante={fotoObrigatoria && !foto ? 'principal' : 'secundario'}
         aoTocar={fotografar}
       />
+      {fotoObrigatoria && !foto ? <Text style={texto.apoio}>A foto é obrigatória para confirmar.</Text> : null}
       {erro instanceof Error && !erroCampo ? <Aviso>{erro.message}</Aviso> : null}
       <Botao
         titulo={TRANSICOES[acao].rotulo}
-        variante={acao === 'entregar' ? 'sucesso' : 'perigo'}
+        variante={acao === 'falhar' ? 'perigo' : 'sucesso'}
         carregando={enviando}
-        desativado={acao === 'entregar' ? codigo.length !== 4 : motivo.trim().length < 3}
+        desativado={!dadoOk || (fotoObrigatoria && !foto)}
         aoTocar={() => aoConfirmar(acao === 'entregar' ? { codigo } : { motivo }, foto)}
       />
+      {aoSemCodigo ? (
+        <Botao titulo="Cliente sem o código? Entregar sem ele" variante="secundario" aoTocar={aoSemCodigo} />
+      ) : null}
       <Botao titulo="Voltar" variante="secundario" aoTocar={aoVoltar} />
     </Secao>
   );
@@ -134,8 +192,10 @@ function FormularioAcao({
 export default function Entrega() {
   const { empresaId = '', pedidoId = '' } = useLocalSearchParams<{ empresaId: string; pedidoId: string }>();
   const consultas = useQueryClient();
-  const [aberta, setAberta] = useState<'entregar' | 'falhar' | null>(null);
+  const [aberta, setAberta] = useState<AcaoComFormulario | null>(null);
   const [concluido, setConcluido] = useState<PedidoDetalhe | null>(null);
+  // Errar o código e tentar de novo não reenvia a mesma foto.
+  const fotoEnviada = useRef<string | null>(null);
 
   const pedido = useQuery({
     queryKey: ['pedido', empresaId, pedidoId],
@@ -147,8 +207,12 @@ export default function Entrega() {
     mutationFn: async ({ acao, dados, fotoUri }: { acao: AcaoPedido; dados: DadosAcaoPedido; fotoUri?: string | null }) => {
       // A foto sobe antes: se a internet cair no meio, a ação ainda não foi registrada.
       if (fotoUri) {
-        const tipo: TipoFoto = acao === 'falhar' ? 'falha' : 'entrega';
-        await enviarFoto(empresaId, pedidoId, fotoUri, tipo);
+        const tipo = tipoDaFoto(acao);
+        const chave = `${tipo}:${fotoUri}`;
+        if (fotoEnviada.current !== chave) {
+          await enviarFoto(empresaId, pedidoId, fotoUri, tipo);
+          fotoEnviada.current = chave;
+        }
       }
       const posicao = await posicaoAtual();
       return api<PedidoDetalhe>(`/empresas/${empresaId}/pedidos/${pedidoId}/acoes/${acao}`, {
@@ -192,7 +256,7 @@ export default function Entrega() {
 
   const p = pedido.data;
   const troco = p.trocoParaCentavos !== null ? p.trocoParaCentavos - p.valorACobrarCentavos : null;
-  const acoesSimples = p.acoes.filter((a) => a !== 'entregar' && a !== 'falhar');
+  const acoesSimples = p.acoes.filter((a) => a !== 'entregar' && a !== 'entregar_sem_codigo' && a !== 'falhar');
 
   return (
     <>
@@ -219,10 +283,20 @@ export default function Entrega() {
           <Aviso tipo="info">{p.observacoes}</Aviso>
         ) : null}
         {p.codigoBloqueado ? <Aviso>Código bloqueado após várias tentativas. Fale com a central para confirmar a entrega.</Aviso> : null}
+        {p.status === 'atribuido' && p.aceiteAte ? <PrazoAceite ate={p.aceiteAte} /> : null}
 
         {aberta ? (
           <FormularioAcao
             acao={aberta}
+            fotoObrigatoria={p.fotoObrigatoria.includes(aberta)}
+            aoSemCodigo={
+              aberta === 'entregar' && p.acoes.includes('entregar_sem_codigo')
+                ? () => {
+                    executar.reset();
+                    setAberta('entregar_sem_codigo');
+                  }
+                : undefined
+            }
             enviando={executar.isPending}
             erro={executar.error}
             aoVoltar={() => {

@@ -1,10 +1,12 @@
 // Pedidos de uma empresa. Mesma regra de escopo-empresa.ts: tudo filtra por
 // ctx.empresaId. Além disso, o motoboy só enxerga os pedidos atribuídos a ele
 // que ainda estão em andamento, e nunca recebe o código de entrega.
+// A exceção é expirarAceites(), tarefa do sistema que roda para todas as empresas.
 
-import { and, asc, count, desc, eq, gte, inArray, lt, notInArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lt, lte, notInArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import {
+  FOTO_DA_ACAO,
   MAX_TENTATIVAS_CODIGO,
   ROTULOS_STATUS,
   STATUS_FINAIS,
@@ -12,6 +14,7 @@ import {
   acoesPermitidas,
   atorDoPapel,
   caminhoRastreio,
+  fotoObrigatoria,
   statusFinal,
   type AcaoPedido,
   type ClienteResposta,
@@ -19,6 +22,7 @@ import {
   type MotoboyResumo,
   type PedidoDetalhe,
   type PedidoResumo,
+  type RegrasEntrega,
   type StatusPedido,
   type TipoFoto,
   type schemaAcaoPedidoComPosicao,
@@ -26,7 +30,7 @@ import {
 } from '@entregas/shared';
 import type { z } from 'zod';
 import type { Db } from '../db/index.ts';
-import { clientes, eventosPedido, fotosPedido, paradas, pedidos, turnos, usuarios, vinculos } from '../db/schema.ts';
+import { clientes, empresas, eventosPedido, fotosPedido, paradas, pedidos, turnos, usuarios, vinculos } from '../db/schema.ts';
 import type { ContextoEmpresa } from '../tipos.ts';
 import { ErroApi, camposInvalidos, naoEncontrado, proibido } from '../erros.ts';
 import { gerarToken } from '../auth/cripto.ts';
@@ -54,6 +58,104 @@ function inicioDoDia(dia?: string): number {
 function gerarCodigo(): string {
   const [n] = crypto.getRandomValues(new Uint32Array(1));
   return String(n! % 10_000).padStart(4, '0');
+}
+
+function prazoDeAceite(regras: RegrasEntrega, agora: Date): Date | null {
+  return regras.prazoAceiteMin ? new Date(agora.getTime() + regras.prazoAceiteMin * 60_000) : null;
+}
+
+interface NovoEvento {
+  empresaId: string;
+  pedidoId: string;
+  acao: AcaoPedido;
+  de: StatusPedido;
+  para: StatusPedido;
+  usuarioId: string;
+  papel: ContextoEmpresa['papel'];
+  motivo?: string | null;
+  detalhe?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  criadoEm: Date;
+}
+
+/**
+ * Evento do histórico que só é gravado se a instrução anterior do mesmo batch mudou
+ * exatamente uma linha. O batch do D1 é uma transação e changes() olha a instrução
+ * anterior, então a mudança de status e o evento acontecem juntos ou não acontecem.
+ * (O Drizzle não aceita SQL bruto dentro de batch no D1, por isso o cliente direto.)
+ */
+function eventoSeMudou(d1: D1Database, e: NovoEvento) {
+  return d1
+    .prepare(
+      `INSERT INTO eventos_pedido (id, empresa_id, pedido_id, acao, de, para, usuario_id, papel, motivo, detalhe, latitude, longitude, criado_em)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE changes() = 1`,
+    )
+    .bind(
+      crypto.randomUUID(),
+      e.empresaId,
+      e.pedidoId,
+      e.acao,
+      e.de,
+      e.para,
+      e.usuarioId,
+      e.papel,
+      e.motivo ?? null,
+      e.detalhe ?? null,
+      e.latitude ?? null,
+      e.longitude ?? null,
+      e.criadoEm.getTime(),
+    );
+}
+
+/**
+ * Cron de cada minuto: pedido atribuído cujo prazo de aceite acabou volta para a fila
+ * sem motoboy. O evento fica no nome do motoboy que não respondeu. Devolve os pedidos
+ * que voltaram, para avisar o tempo real de cada empresa.
+ */
+export async function expirarAceites(db: Db, agora = new Date()) {
+  const vencidos = await db
+    .select({ id: pedidos.id, empresaId: pedidos.empresaId, usuarioId: vinculos.usuarioId })
+    .from(pedidos)
+    .innerJoin(vinculos, eq(vinculos.id, pedidos.motoboyVinculoId))
+    .where(and(eq(pedidos.status, 'atribuido'), lte(pedidos.aceiteAte, agora)))
+    .limit(50)
+    .all();
+  if (vencidos.length === 0) return [];
+
+  const d1 = db.$client;
+  const instrucoes = vencidos.flatMap((p) => {
+    // As condições se repetem: se a central trocou o motoboy nesse meio-tempo, o prazo é outro.
+    const atualizar = db
+      .update(pedidos)
+      .set({ status: 'pendente', motoboyVinculoId: null, aceiteAte: null, atualizadoEm: agora })
+      .where(
+        and(
+          eq(pedidos.id, p.id),
+          eq(pedidos.empresaId, p.empresaId),
+          eq(pedidos.status, 'atribuido'),
+          lte(pedidos.aceiteAte, agora),
+        ),
+      )
+      .toSQL();
+    return [
+      d1.prepare(atualizar.sql).bind(...atualizar.params),
+      eventoSeMudou(d1, {
+        empresaId: p.empresaId,
+        pedidoId: p.id,
+        acao: 'expirar_aceite',
+        de: 'atribuido',
+        para: 'pendente',
+        usuarioId: p.usuarioId,
+        papel: 'motoboy',
+        criadoEm: agora,
+      }),
+    ];
+  });
+  const resultados = await d1.batch(instrucoes);
+  return vencidos
+    .filter((_, i) => resultados[i * 2]!.meta.changes === 1)
+    .map((p) => ({ empresaId: p.empresaId, pedidoId: p.id }));
 }
 
 export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
@@ -100,7 +202,17 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     motoboy: p.motoboyVinculoId && motoboyNome ? { vinculoId: p.motoboyVinculoId, nome: motoboyNome } : null,
     formaPagamento: p.formaPagamento,
     valorACobrarCentavos: p.valorACobrarCentavos,
+    aceiteAte: p.aceiteAte?.toISOString() ?? null,
   });
+
+  async function regras(): Promise<RegrasEntrega> {
+    const linha = await db
+      .select({ fotoEntregaObrigatoria: empresas.fotoEntregaObrigatoria, prazoAceiteMin: empresas.prazoAceiteMin })
+      .from(empresas)
+      .where(eq(empresas.id, empresaId))
+      .get();
+    return linha ?? { fotoEntregaObrigatoria: false, prazoAceiteMin: null };
+  }
 
   /** Confere se o vínculo é de um motoboy ativo desta empresa. */
   async function motoboyValido(vinculoId: string | undefined) {
@@ -132,7 +244,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     const linha = await consultaResumo().where(and(filtro, eq(pedidos.id, pedidoId))).get();
     if (!linha) throw naoEncontrado('Pedido não encontrado.');
 
-    const [pontos, eventos, fotos] = await Promise.all([
+    const [pontos, eventos, fotos, regrasEmpresa] = await Promise.all([
       db
         .select()
         .from(paradas)
@@ -152,6 +264,8 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
         .where(and(eq(fotosPedido.pedidoId, pedidoId), eq(fotosPedido.empresaId, empresaId)))
         .orderBy(asc(fotosPedido.criadoEm))
         .all(),
+      // A foto só é exigida do motoboy; a central registra sem foto (ex.: ele ligou).
+      ehMotoboy ? regras() : null,
     ]);
 
     const p = linha.pedido;
@@ -161,7 +275,8 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     };
     const codigoBloqueado = p.tentativasCodigo >= MAX_TENTATIVAS_CODIGO;
     let acoes = acoesPermitidas(p.status, ator);
-    if (ehMotoboy && codigoBloqueado) acoes = acoes.filter((a) => a !== 'entregar');
+    // Código bloqueado: nem com código nem sem ele; só a central confirma.
+    if (ehMotoboy && codigoBloqueado) acoes = acoes.filter((a) => a !== 'entregar' && a !== 'entregar_sem_codigo');
 
     return {
       ...paraResumo(linha),
@@ -174,6 +289,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       ...(ehMotoboy ? {} : { codigoEntrega: p.codigoEntrega, rastreio: { caminho: caminhoRastreio(p.tokenRastreio) } }),
       codigoBloqueado,
       acoes,
+      fotoObrigatoria: regrasEmpresa ? acoes.filter((a) => fotoObrigatoria(a, regrasEmpresa)) : [],
       eventos: eventos.map(({ evento: e, autor }) => ({
         id: e.id,
         acao: e.acao,
@@ -234,6 +350,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
 
       const pedidoId = crypto.randomUUID();
       const status: StatusPedido = motoboy ? 'atribuido' : 'pendente';
+      const aceiteAte = motoboy ? prazoDeAceite(await regras(), new Date()) : null;
       const evento = { empresaId, pedidoId, usuarioId: ctx.usuarioId, papel: ctx.papel };
 
       await db.batch([
@@ -244,6 +361,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
           numero: sql`(SELECT COALESCE(MAX(${pedidos.numero}), 0) + 1 FROM ${pedidos} WHERE ${pedidos.empresaId} = ${empresaId})`,
           status,
           motoboyVinculoId: motoboy?.id ?? null,
+          aceiteAte,
           clienteId: cliente.id,
           formaPagamento: dados.formaPagamento,
           valorACobrarCentavos: dados.valorACobrarCentavos,
@@ -287,7 +405,44 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       }
 
       const exige = 'exige' in transicao ? transicao.exige : undefined;
-      if (exige === 'motivo' && !dados.motivo) throw camposInvalidos({ motivo: ['Descreva o motivo.'] });
+      if (exige === 'motivo' && !dados.motivo) {
+        throw camposInvalidos({
+          motivo: [acao === 'entregar_sem_codigo' ? 'Diga com quem ou onde ficou.' : 'Descreva o motivo.'],
+        });
+      }
+
+      const codigoBloqueado = ehMotoboy && pedido.tentativasCodigo >= MAX_TENTATIVAS_CODIGO;
+      if (codigoBloqueado && (acao === 'entregar' || acao === 'entregar_sem_codigo')) {
+        throw new ErroApi(423, 'codigo_bloqueado', 'Código bloqueado após várias tentativas. Fale com a central.');
+      }
+
+      const regrasEmpresa = ehMotoboy || transicao.para === 'atribuido' ? await regras() : null;
+      if (ehMotoboy && regrasEmpresa && fotoObrigatoria(acao, regrasEmpresa)) {
+        const tipo = FOTO_DA_ACAO[acao as keyof typeof FOTO_DA_ACAO];
+        // Vale a foto desta etapa: enviada depois da última mudança de status do pedido.
+        const foto = await db
+          .select({ id: fotosPedido.id })
+          .from(fotosPedido)
+          .where(
+            and(
+              eq(fotosPedido.pedidoId, pedido.id),
+              eq(fotosPedido.empresaId, empresaId),
+              eq(fotosPedido.tipo, tipo),
+              gte(
+                fotosPedido.criadoEm,
+                sql`(SELECT MAX(${eventosPedido.criadoEm}) FROM ${eventosPedido} WHERE ${eventosPedido.pedidoId} = ${pedido.id} AND ${eventosPedido.empresaId} = ${empresaId})`,
+              ),
+            ),
+          )
+          .get();
+        if (!foto) {
+          throw new ErroApi(
+            422,
+            'foto_obrigatoria',
+            acao === 'falhar' ? 'Tire uma foto do local antes de registrar.' : 'Tire a foto do comprovante antes de confirmar.',
+          );
+        }
+      }
 
       let motoboyVinculoId = pedido.motoboyVinculoId;
       let detalheEvento: string | null = null;
@@ -300,9 +455,6 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
 
       if (exige === 'codigo') {
         if (!dados.codigo) throw camposInvalidos({ codigo: ['Informe o código de 4 dígitos do cliente.'] });
-        if (ehMotoboy && pedido.tentativasCodigo >= MAX_TENTATIVAS_CODIGO) {
-          throw new ErroApi(423, 'codigo_bloqueado', 'Código bloqueado após várias tentativas. Fale com a central.');
-        }
         if (dados.codigo !== pedido.codigoEntrega) {
           await db
             .update(pedidos)
@@ -326,37 +478,30 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
           status: transicao.para,
           motoboyVinculoId,
           motivo: dados.motivo ?? pedido.motivo,
+          // Toda nova atribuição recomeça o prazo; qualquer outra mudança o encerra.
+          aceiteAte: transicao.para === 'atribuido' && regrasEmpresa ? prazoDeAceite(regrasEmpresa, agora) : null,
           concluidoEm: statusFinal(transicao.para) ? agora : null,
           atualizadoEm: agora,
         })
         .where(and(eq(pedidos.id, pedido.id), eq(pedidos.empresaId, empresaId), eq(pedidos.status, pedido.status)))
         .toSQL();
-      // O batch do D1 é uma transação: changes() devolve as linhas afetadas pela instrução
-      // anterior, então o evento só é gravado se a mudança de status aconteceu.
-      // (O Drizzle não aceita SQL bruto dentro de batch no D1, por isso o cliente direto.)
       const d1 = db.$client;
       const [resultado] = await d1.batch([
         d1.prepare(atualizar.sql).bind(...atualizar.params),
-        d1
-          .prepare(
-            `INSERT INTO eventos_pedido (id, empresa_id, pedido_id, acao, de, para, usuario_id, papel, motivo, detalhe, latitude, longitude, criado_em)
-             SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE changes() = 1`,
-          )
-          .bind(
-            crypto.randomUUID(),
-            empresaId,
-            pedido.id,
-            acao,
-            pedido.status,
-            transicao.para,
-            ctx.usuarioId,
-            ctx.papel,
-            dados.motivo ?? null,
-            detalheEvento,
-            dados.latitude ?? null,
-            dados.longitude ?? null,
-            agora.getTime(),
-          ),
+        eventoSeMudou(d1, {
+          empresaId,
+          pedidoId: pedido.id,
+          acao,
+          de: pedido.status,
+          para: transicao.para,
+          usuarioId: ctx.usuarioId,
+          papel: ctx.papel,
+          motivo: dados.motivo,
+          detalhe: detalheEvento,
+          latitude: dados.latitude,
+          longitude: dados.longitude,
+          criadoEm: agora,
+        }),
       ]);
       if (resultado!.meta.changes !== 1) {
         throw new ErroApi(409, 'pedido_mudou', 'O pedido acabou de mudar de situação. Atualize a tela e tente de novo.');

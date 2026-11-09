@@ -161,6 +161,14 @@ export const schemaAtualizarDadosEmpresa = z
     telefone: campoTelefone.nullable().optional(),
     email: campoEmail.nullable().optional(),
     endereco: schemaEndereco.optional(),
+    fotoEntregaObrigatoria: z.boolean().optional(),
+    prazoAceiteMin: z
+      .number()
+      .int('Use minutos inteiros.')
+      .min(1, 'O prazo mínimo é 1 minuto.')
+      .max(60, 'O prazo máximo é 60 minutos.')
+      .nullable()
+      .optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'Nada para atualizar.');
 

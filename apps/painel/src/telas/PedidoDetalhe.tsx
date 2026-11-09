@@ -231,6 +231,7 @@ export function PedidoDetalhe() {
   if (pedido.isLoading) return <p>Carregando pedido…</p>;
   if (pedido.error || !pedido.data) return <AvisoErro erro={pedido.error ?? new Error('Pedido não encontrado.')} />;
   const p = pedido.data;
+  const semCodigo = p.status === 'entregue' && p.eventos.at(-1)?.acao === 'entregar_sem_codigo';
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
@@ -245,9 +246,17 @@ export function PedidoDetalhe() {
         <p className="text-concreto">
           Criado às {horaCurta(p.criadoEm)}
           {p.motoboy ? `. Motoboy: ${p.motoboy.nome}.` : '. Ainda sem motoboy.'}
+          {p.status === 'atribuido' &&
+            p.aceiteAte &&
+            ` Se ele não aceitar até ${horaCurta(p.aceiteAte)}, o pedido volta para a fila.`}
         </p>
         {p.motivo && (p.status === 'falhou' || p.status === 'cancelado' || p.status === 'em_devolucao') && (
           <p className="border-l-4 border-aluguel bg-white px-3 py-2">Motivo: {p.motivo}</p>
+        )}
+        {semCodigo && (
+          <p className="border-l-4 border-sinal bg-white px-3 py-2">
+            Entregue sem o código. Com quem ou onde ficou: {p.motivo}. Confira a foto do motoboy.
+          </p>
         )}
       </header>
 
@@ -324,7 +333,11 @@ export function PedidoDetalhe() {
                       {e.autor}
                       {e.papel === 'motoboy' ? ' (motoboy)' : ''}. {ROTULOS_STATUS[e.para]}.
                     </p>
-                    {e.motivo && <p className="text-sm">Motivo: {e.motivo}</p>}
+                    {e.motivo && (
+                      <p className="text-sm">
+                        {e.acao === 'entregar_sem_codigo' ? 'Com quem ficou' : 'Motivo'}: {e.motivo}
+                      </p>
+                    )}
                   </div>
                 </li>
               ))}
