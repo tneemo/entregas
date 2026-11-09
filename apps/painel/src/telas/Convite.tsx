@@ -55,7 +55,7 @@ export function Convite() {
         <h1 className="text-3xl">Pronto, você entrou na equipe</h1>
         {papel === 'motoboy' ? (
           <p>
-            Seu acesso está criado. O app do motoboy chega na próxima etapa do projeto; você vai entrar nele com este
+            Seu acesso está criado. Instale o app Entregas Motoboy (a empresa envia o link) e entre nele com este
             telefone ou CPF e a senha que acabou de criar.
           </p>
         ) : (

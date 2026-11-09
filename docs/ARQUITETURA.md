@@ -263,7 +263,8 @@ Monorepo com **npm workspaces**; TypeScript em tudo; testes com Vitest (`@cloudf
 
 - [ ] Confirmar com o **Transitar (Cascavel)** as exigências municipais de motofrete (alvará, cadastro do condutor, vistoria).
 - [ ] Nome da plataforma e domínio.
-- [ ] Conta Cloudflare (plano Workers Paid recomendado em produção) e conta Google Cloud com faturamento para as APIs de mapas.
+- [x] Conta Cloudflare: API e painel publicados em `entregas.joaopedropavanete.workers.dev` (ambiente `producao`). Falta assinar o Workers Paid antes do piloto (o login gasta ~25 ms de CPU).
+- [ ] Conta Google Cloud com faturamento para as APIs de mapas.
 - [ ] Conta de desenvolvedor Google Play (ou piloto com APK).
 - [ ] Contador: emissão de NFS-e sobre a comissão.
 - [ ] Advogado: termos de uso, política de privacidade, contrato de tratamento de dados com as empresas.

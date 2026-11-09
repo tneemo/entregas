@@ -22,7 +22,7 @@ export function Inicio() {
       <h1 className="text-3xl">Olá, {eu.usuario.nome.split(' ')[0]}</h1>
       <p>
         {eu.vinculos.length > 0
-          ? 'Sua conta é de motoboy. O trabalho do dia a dia acontece no app do motoboy, que chega na próxima etapa.'
+          ? 'Sua conta é de motoboy. O trabalho do dia a dia acontece no app Entregas Motoboy, no celular.'
           : 'Você ainda não faz parte de nenhuma empresa ativa. Peça um convite ao administrador da empresa.'}
       </p>
       <Botao variante="secundario" className="self-start" onClick={() => sair.mutate()}>

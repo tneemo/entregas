@@ -6,7 +6,7 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "owner": "unktneemo",
     "android": {
       "package": "br.com.entregas.motoboy",
       "permissions": [
@@ -16,7 +16,8 @@
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
         "CAMERA"
-      ]
+      ],
+      "blockedPermissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
       "bundler": "metro",
@@ -38,12 +39,18 @@
         "expo-image-picker",
         {
           "cameraPermission": "A câmera é usada para fotografar o comprovante de entrega.",
-          "photosPermission": false
+          "photosPermission": false,
+          "microphonePermission": false
         }
       ]
     ],
     "experiments": {
       "typedRoutes": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4b13a1a3-1c6e-4d95-a629-576963c0c068"
+      }
     }
   }
 }

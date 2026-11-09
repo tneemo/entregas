@@ -11,7 +11,7 @@
     "tipos": "wrangler types",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "deploy": "npm run build -w @entregas/painel && wrangler deploy"
+    "deploy": "npm run build -w @entregas/painel && wrangler deploy --env producao"
   },
   "dependencies": {
     "@entregas/shared": "*",

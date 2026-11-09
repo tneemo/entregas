@@ -24,7 +24,7 @@
     {
       "binding": "DB",
       "database_name": "entregas",
-      // Trocar pelo ID real ao criar o banco na Cloudflare (wrangler d1 create entregas).
+      // Só local: o banco da Cloudflare fica em env.producao. Trocar este ID apagaria (de vista) o banco local.
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }
@@ -41,6 +41,31 @@
     // Origens que podem chamar a API pelo navegador com Bearer (só o app rodando na web em desenvolvimento).
     // Vazio em produção: o app Android não usa CORS.
     "ORIGENS_APP": ""
+  },
+  // Segredos (wrangler secret put --env producao): SETUP_TOKEN — usado uma única vez para criar o primeiro super admin.
+
+  // O que está acima é o desenvolvimento local (wrangler dev, testes). O que vai para a Cloudflare
+  // é este ambiente: npm run deploy -w @entregas/api. Assets, cron, observabilidade e as migrations
+  // do Durable Object são herdados; bindings e vars precisam ser repetidos.
+  "env": {
+    "producao": {
+      "name": "entregas",
+      "durable_objects": {
+        "bindings": [{ "name": "CENTRAL", "class_name": "CentralEmpresa" }]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "entregas",
+          "database_id": "ca0b37f4-5e5d-429f-b04a-6307ecc1c02e",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "FOTOS", "bucket_name": "entregas-fotos" }],
+      "vars": {
+        "AMBIENTE": "producao",
+        "ORIGENS_APP": ""
+      }
+    }
   }
-  // Segredos (wrangler secret put): SETUP_TOKEN — usado uma única vez para criar o primeiro super admin.
 }

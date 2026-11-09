@@ -59,9 +59,15 @@ No celular Android, na mesma rede Wi-Fi do computador:
 2. Em `apps/motoboy/.env`, troque `EXPO_PUBLIC_API_URL` pelo IP do computador (ex.: `http://192.168.0.10:8787`)
 3. `npm run start -w @entregas/motoboy` e abra o QR code no app Expo Go
 
-O Expo Go roda quase tudo, mas **não faz GPS com a tela apagada**. Para isso é preciso um build de
-desenvolvimento do app: pelo EAS (`npx eas build --profile development --platform android`, exige conta
-gratuita na Expo) ou localmente com Android Studio (`npx expo run:android`).
+O Expo Go roda quase tudo, mas **não faz GPS com a tela apagada**. Para testar de verdade, gere o APK
+de teste, que fala com a API publicada (endereço no perfil `teste` de `apps/motoboy/eas.json`). Dentro de
+`apps/motoboy`, com uma conta gratuita na Expo:
+
+```bash
+npx eas-cli build -p android --profile teste
+```
+
+O build roda na nuvem da Expo e termina com um link (e QR code) para baixar o APK no celular.
 
 ## Testes
 
@@ -85,12 +91,29 @@ O esquema fica em `apps/api/src/db/schema.ts`. Depois de alterá-lo:
 npm run db:gerar -w @entregas/api
 ```
 
-## Publicar na Cloudflare (ainda não feito)
+## Publicar na Cloudflare
 
-1. `npx wrangler login`
-2. `npx wrangler d1 create entregas` e copiar o `database_id` para `apps/api/wrangler.jsonc`
-3. `npx wrangler d1 migrations apply DB --remote` (dentro de `apps/api`)
-4. `npx wrangler secret put SETUP_TOKEN` (dentro de `apps/api`)
-5. `npm run deploy -w @entregas/api`
+No ar em https://entregas.joaopedropavanete.workers.dev: ambiente `producao` do `apps/api/wrangler.jsonc`,
+com o banco D1 `entregas` e o bucket R2 `entregas-fotos`. A parte de cima do `wrangler.jsonc` é só para
+desenvolvimento local (o `database_id` zerado identifica o banco local; não troque).
 
-Use o plano **Workers Paid**: o hash de senha (PBKDF2, 100 mil iterações) passa do limite de CPU do plano gratuito.
+Se houver migration nova, aplique antes do deploy (dentro de `apps/api`):
+
+```bash
+npx wrangler d1 migrations apply DB --remote --env producao
+```
+
+Para publicar a API e o painel:
+
+```bash
+npm run deploy -w @entregas/api
+```
+
+O primeiro super admin é criado na tela de configuração inicial do painel, com o segredo `SETUP_TOKEN`
+(`npx wrangler secret put SETUP_TOKEN --env producao`). Depois disso ele não serve para mais nada e pode ser
+apagado com `npx wrangler secret delete SETUP_TOKEN --env producao`.
+
+No PowerShell do Windows, se o `npx` for bloqueado pela política de scripts, use `npx.cmd`.
+
+Use o plano **Workers Paid**: o hash de senha (PBKDF2, 100 mil iterações) gasta uns 25 ms de CPU por login,
+acima dos 10 ms do plano gratuito.
