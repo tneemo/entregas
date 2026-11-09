@@ -1,14 +1,16 @@
 // /empresas/:empresaId/pedidos — fila da central e entregas do motoboy.
 
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 import {
+  type AcaoPedido,
   FOTO_MAX_BYTES,
   FOTO_TIPOS_CONTEUDO,
   TIPOS_FOTO,
   schemaAcaoPedidoComPosicao,
   schemaCriarPedido,
   schemaParamAcao,
+  type PedidoDetalhe,
 } from '@entregas/shared';
 import type { AppEnv } from '../tipos.ts';
 import { ErroApi, naoEncontrado } from '../erros.ts';
@@ -17,8 +19,44 @@ import { exigirEmpresa } from '../middleware/empresa.ts';
 import { escopoPedidos } from '../dados/escopo-pedidos.ts';
 import { avisar } from '../central/avisar.ts';
 import { comLocalizacao } from '../geocodificacao.ts';
+import { type Aviso, avisos, notificar } from '../notificacoes.ts';
 
 const escopo = (c: { var: AppEnv['Variables'] }) => escopoPedidos(c.var.db, c.var.empresa);
+
+type QuemAvisar = { vinculoId: string; aviso: (usuarioId: string) => Aviso };
+
+/** Notifica motoboys depois de responder; a ação já valeu, mesmo que o aviso não chegue. */
+function avisarMotoboys(c: Context<AppEnv>, lista: QuemAvisar[]) {
+  if (lista.length === 0) return;
+  c.executionCtx.waitUntil(
+    (async () => {
+      const usuarios = await escopo(c).usuariosDosMotoboys(lista.map((q) => q.vinculoId));
+      const prontos = lista.flatMap((q) => {
+        const usuarioId = usuarios.get(q.vinculoId);
+        return usuarioId ? [q.aviso(usuarioId)] : [];
+      });
+      await notificar(c.env, c.var.db, prontos);
+    })().catch((erro) => console.error('notificação: falhou ao montar os avisos', erro)),
+  );
+}
+
+/**
+ * Quem precisa saber de uma ação da central: o motoboy que recebeu o pedido, o que perdeu,
+ * e o que tinha o pedido cancelado. Ações do próprio motoboy (aceitar, recusar) não avisam ninguém.
+ */
+function quemAvisar(empresaId: string, acao: AcaoPedido, pedido: PedidoDetalhe, antes: string | null): QuemAvisar[] {
+  const depois = pedido.motoboy?.vinculoId ?? null;
+  const lista: QuemAvisar[] = [];
+  if (depois && depois !== antes) {
+    lista.push({ vinculoId: depois, aviso: (u) => avisos.novoPedido(u, empresaId, pedido) });
+  }
+  if (antes && acao === 'cancelar') {
+    lista.push({ vinculoId: antes, aviso: (u) => avisos.cancelado(u, empresaId, pedido) });
+  } else if (antes && depois !== antes) {
+    lista.push({ vinculoId: antes, aviso: (u) => avisos.retirado(u, empresaId, pedido) });
+  }
+  return lista;
+}
 
 const filtroLista = z.object({
   situacao: z.enum(['ativos', 'concluidos']).default('ativos'),
@@ -45,9 +83,13 @@ export const rotasPedidos = new Hono<AppEnv>()
     dados.coleta.endereco = coleta;
     dados.entrega.endereco = entrega;
     const pedido = await escopo(c).criar(dados);
-    avisar(c, c.var.empresa.empresaId, (central) =>
-      central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null),
-    );
+    const { empresaId } = c.var.empresa;
+    avisar(c, empresaId, (central) => central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null));
+    if (pedido.motoboy) {
+      avisarMotoboys(c, [
+        { vinculoId: pedido.motoboy.vinculoId, aviso: (u) => avisos.novoPedido(u, empresaId, pedido) },
+      ]);
+    }
     return c.json(pedido, 201);
   })
 
@@ -58,11 +100,11 @@ export const rotasPedidos = new Hono<AppEnv>()
     const acao = schemaParamAcao.safeParse(c.req.param('acao'));
     if (!acao.success) throw naoEncontrado('Ação desconhecida.');
     const dados = await lerCorpo(c, schemaAcaoPedidoComPosicao);
-    const pedido = await escopo(c).executar(c.req.param('pedidoId'), acao.data, dados);
+    const { pedido, motoboyAntes } = await escopo(c).executar(c.req.param('pedidoId'), acao.data, dados);
+    const { empresaId, papel } = c.var.empresa;
     // Avisa painel e rastreio; a resposta ao motoboy pode omitir dados, mas status e motoboy vêm sempre.
-    avisar(c, c.var.empresa.empresaId, (central) =>
-      central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null),
-    );
+    avisar(c, empresaId, (central) => central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null));
+    if (papel !== 'motoboy') avisarMotoboys(c, quemAvisar(empresaId, acao.data, pedido, motoboyAntes));
     return c.json(pedido);
   })
 

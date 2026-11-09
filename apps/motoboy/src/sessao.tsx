@@ -4,10 +4,13 @@ import type { EntrarResposta, EuResposta } from '@entregas/shared';
 import { api, ErroDaApi } from './api.ts';
 import { lerToken, salvarToken } from './armazenamento.ts';
 import { pararRastreio } from './rastreio.ts';
+import { ativarNotificacoes, type SituacaoNotificacao } from './notificacoes.ts';
 
 interface Sessao {
   carregando: boolean;
   eu: EuResposta | null;
+  /** null enquanto não tentou (sem login, ou abrindo). */
+  notificacoes: SituacaoNotificacao | null;
   entrar: (login: string, senha: string) => Promise<void>;
   sair: () => Promise<void>;
   recarregar: () => Promise<void>;
@@ -19,6 +22,21 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const consultas = useQueryClient();
   const [carregando, setCarregando] = useState(true);
   const [eu, setEu] = useState<EuResposta | null>(null);
+  const [notificacoes, setNotificacoes] = useState<SituacaoNotificacao | null>(null);
+  const usuarioId = eu?.usuario.id;
+
+  // Logado: este celular passa a receber aviso de pedido (o cadastro fica preso a esta sessão).
+  useEffect(() => {
+    if (!usuarioId) {
+      setNotificacoes(null);
+      return;
+    }
+    let ativo = true;
+    ativarNotificacoes().then((situacao) => ativo && setNotificacoes(situacao));
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioId]);
 
   async function recarregar() {
     if (!(await lerToken())) {
@@ -56,7 +74,9 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ContextoSessao.Provider value={{ carregando, eu, entrar, sair, recarregar }}>{children}</ContextoSessao.Provider>
+    <ContextoSessao.Provider value={{ carregando, eu, notificacoes, entrar, sair, recarregar }}>
+      {children}
+    </ContextoSessao.Provider>
   );
 }
 

@@ -82,11 +82,15 @@ export function useDadosEmpresa(empresaId: string) {
   });
 }
 
-/** A API já ordena quem está em turno primeiro. */
+/**
+ * A API já ordena quem está em turno primeiro. "sem notificação": o celular dele não recebe aviso
+ * (app sem permissão ou deslogado), então só vê o pedido com o app aberto; vale ligar para ele.
+ */
 export function rotuloMotoboy(m: MotoboyResumo) {
-  if (!m.emTurno) return `${m.nome} (fora do turno)`;
-  if (m.pedidosAtivos === 0) return `${m.nome} (em turno, livre)`;
-  return `${m.nome} (em turno, ${m.pedidosAtivos} em andamento)`;
+  const aviso = m.recebeNotificacao ? '' : ', sem notificação';
+  if (!m.emTurno) return `${m.nome} (fora do turno${aviso})`;
+  if (m.pedidosAtivos === 0) return `${m.nome} (em turno, livre${aviso})`;
+  return `${m.nome} (em turno, ${m.pedidosAtivos} em andamento${aviso})`;
 }
 
 /** Endereço como o formulário guarda: tudo texto, inclusive vazio. */

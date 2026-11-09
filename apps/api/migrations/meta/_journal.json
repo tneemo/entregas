@@ -43,6 +43,13 @@
       "when": 1794223097815,
       "tag": "0005_regras_entrega",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794242357264,
+      "tag": "0006_dispositivos",
+      "breakpoints": true
     }
   ]
 }

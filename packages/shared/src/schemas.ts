@@ -157,6 +157,17 @@ export const schemaEndereco = z.object({
 
 export type Endereco = z.output<typeof schemaEndereco>;
 
+/** Celular do motoboy que recebe notificação: token do Expo Push, preso à sessão do app. */
+export const schemaDispositivo = z.object({
+  token: z
+    .string()
+    .trim()
+    .regex(/^Expo(nent)?PushToken\[[^\]]{10,200}\]$/, 'Token de notificação inválido.'),
+  plataforma: z.enum(['android', 'ios']),
+});
+
+export type DadosDispositivo = z.input<typeof schemaDispositivo>;
+
 export const schemaAtualizarDadosEmpresa = z
   .object({
     nomeFantasia: nome.optional(),

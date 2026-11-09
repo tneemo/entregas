@@ -70,7 +70,7 @@ function CartaoEntrega({ empresaId, pedido }: { empresaId: string; pedido: Pedid
 
 export default function Turno() {
   const { empresaId = '' } = useLocalSearchParams<{ empresaId: string }>();
-  const { eu, sair } = useSessao();
+  const { eu, sair, notificacoes } = useSessao();
   const consultas = useQueryClient();
   const [gps, setGps] = useState<ResultadoRastreio | null>(null);
   const empresas = empresasDoMotoboy(eu);
@@ -88,8 +88,8 @@ export default function Turno() {
     queryKey: ['entregas', empresaId],
     queryFn: () => api<PedidoResumo[]>(`/empresas/${empresaId}/pedidos`),
     enabled: Boolean(vinculo),
-    // Sem notificação push ainda: com turno aberto, confere a cada 15 s.
-    refetchInterval: emTurno ? 15_000 : false,
+    // Com turno aberto, confere sozinho: a cada 15 s sem notificação; com ela, só como rede de segurança.
+    refetchInterval: emTurno ? (notificacoes === 'ativa' ? 60_000 : 15_000) : false,
   });
 
   // App reaberto com turno aberto: garante que o GPS continua e esvazia a fila.
@@ -161,6 +161,15 @@ export default function Turno() {
               {gps && <Aviso tipo={AVISO_GPS[gps].tipo}>{AVISO_GPS[gps].texto}</Aviso>}
               {gps === 'so_com_app_aberto' && Platform.OS !== 'web' && (
                 <Botao titulo="Abrir configurações" variante="secundario" aoTocar={() => Linking.openSettings()} />
+              )}
+              {notificacoes === 'negada' && (
+                <>
+                  <Aviso>
+                    Notificações desligadas: com o celular no bolso, você não fica sabendo de pedido novo. Ligue nas
+                    configurações do app.
+                  </Aviso>
+                  <Botao titulo="Ligar notificações" variante="secundario" aoTocar={() => Linking.openSettings()} />
+                </>
               )}
               {encerrar.error && <Aviso>{encerrar.error.message}</Aviso>}
               <Botao

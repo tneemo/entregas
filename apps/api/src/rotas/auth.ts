@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { and, eq, gt, lt, count } from 'drizzle-orm';
-import { schemaEntrar, type EntrarResposta } from '@entregas/shared';
+import { schemaDispositivo, schemaEntrar, type EntrarResposta } from '@entregas/shared';
 import type { AppEnv } from '../tipos.ts';
 import type { Db } from '../db/index.ts';
 import { falhasLogin } from '../db/schema.ts';
@@ -10,6 +10,7 @@ import { ErroApi } from '../erros.ts';
 import { lerCorpo } from '../validar.ts';
 import { exigirLogin } from '../middleware/sessao.ts';
 import { candidatosLogin, montarEu } from '../dados/usuarios.ts';
+import { registrarDispositivo } from '../dados/dispositivos.ts';
 
 const MAX_FALHAS = 5;
 const JANELA_FALHAS_MS = 15 * 60 * 1000;
@@ -72,4 +73,14 @@ export const rotasAuth = new Hono<AppEnv>()
     return c.body(null, 204);
   })
 
-  .get('/eu', exigirLogin, async (c) => c.json(await montarEu(c.var.db, c.var.usuario!.id)));
+  .get('/eu', exigirLogin, async (c) => c.json(await montarEu(c.var.db, c.var.usuario!.id)))
+
+  /**
+   * App do motoboy: este celular passa a receber notificação enquanto esta sessão existir.
+   * Sair do app (ou a sessão vencer) apaga o registro junto.
+   */
+  .post('/dispositivo', exigirLogin, async (c) => {
+    const dados = await lerCorpo(c, schemaDispositivo);
+    await registrarDispositivo(c.var.db, { ...dados, sessaoId: c.var.sessaoId!, usuarioId: c.var.usuario!.id });
+    return c.body(null, 204);
+  });
