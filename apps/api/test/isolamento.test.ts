@@ -2,7 +2,7 @@
 // Toda rota nova de /empresas/:empresaId deve ganhar um caso aqui.
 
 import { beforeAll, describe, expect, it } from 'vitest';
-import { Cliente, empresaComEquipe, novoSuperAdmin } from './ajudantes.ts';
+import { Cliente, empresaComEquipe, endereco, novoSuperAdmin } from './ajudantes.ts';
 
 type Equipe = Awaited<ReturnType<typeof empresaComEquipe>>;
 
@@ -30,6 +30,7 @@ describe('isolamento entre empresas', () => {
       cliente.delete(`${B}/convites/${conviteB.id}`),
       cliente.patch(`${B}/membros/${b.motoboy.eu.vinculos[0].vinculoId}`, { status: 'suspenso' }),
       cliente.get(`${B}/central/posicoes`),
+      cliente.post(`${B}/enderecos/localizar`, endereco()),
       cliente.req('GET', `${B}/central/ws`, undefined, { upgrade: 'websocket', 'sec-fetch-site': 'same-origin' }),
     ];
     for (const r of await Promise.all(tentativas)) {

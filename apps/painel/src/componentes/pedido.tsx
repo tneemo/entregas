@@ -4,12 +4,14 @@ import {
   ROTULOS_STATUS,
   type DadosEmpresaResposta,
   type EnderecoResposta,
+  type Localizacao,
   type MotoboyResumo,
   type PedidoResumo,
   type StatusPedido,
 } from '@entregas/shared';
 import { api } from '../api.ts';
 import { Campo, erroDoCampo } from './ui.tsx';
+import { LocalizacaoEndereco } from './localizacao.tsx';
 
 // Cores por situação: âmbar pede ação da central, azul está andando, vermelho deu problema.
 const COR_STATUS: Record<StatusPedido, string> = {
@@ -97,6 +99,16 @@ export interface EnderecoForm {
   cidade: string;
   uf: string;
   referencia: string;
+  /** Ponto no mapa; some quando a pessoa muda rua, número, bairro ou cidade. */
+  localizacao?: Localizacao;
+}
+
+/** Mudar estes campos muda o lugar: o ponto antigo deixa de valer. */
+const CAMPOS_DO_LUGAR: (keyof EnderecoForm)[] = ['logradouro', 'numero', 'bairro', 'cidade', 'uf'];
+
+function semPontoSeMudouOLugar(antes: EnderecoForm, depois: EnderecoForm): EnderecoForm {
+  const mudou = CAMPOS_DO_LUGAR.some((c) => antes[c] !== depois[c]);
+  return mudou ? { ...depois, localizacao: undefined } : depois;
 }
 
 export function enderecoVazio(cidade = '', uf = ''): EnderecoForm {
@@ -122,15 +134,18 @@ export function EnderecoCampos({
   aoMudar,
   erro,
   prefixo,
+  tipo,
 }: {
   valor: EnderecoForm;
   aoMudar: (v: EnderecoForm) => void;
   erro: unknown;
   prefixo: string;
+  /** Cor e nome do pino no mapa. */
+  tipo: 'coleta' | 'entrega';
 }) {
   const [cepAviso, setCepAviso] = useState<string | undefined>();
   const mudar = (campo: keyof EnderecoForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    aoMudar({ ...valor, [campo]: e.target.value });
+    aoMudar(semPontoSeMudouOLugar(valor, { ...valor, [campo]: e.target.value }));
   const erroDe = (campo: keyof EnderecoForm) => erroDoCampo(erro, `${prefixo}.${campo}`);
 
   async function buscarCep() {
@@ -150,13 +165,15 @@ export function EnderecoCampos({
         setCepAviso('CEP não encontrado. Preencha o endereço abaixo.');
         return;
       }
-      aoMudar({
-        ...valor,
-        logradouro: dados.logradouro || valor.logradouro,
-        bairro: dados.bairro || valor.bairro,
-        cidade: dados.localidade || valor.cidade,
-        uf: dados.uf || valor.uf,
-      });
+      aoMudar(
+        semPontoSeMudouOLugar(valor, {
+          ...valor,
+          logradouro: dados.logradouro || valor.logradouro,
+          bairro: dados.bairro || valor.bairro,
+          cidade: dados.localidade || valor.cidade,
+          uf: dados.uf || valor.uf,
+        }),
+      );
       setCepAviso(undefined);
     } catch {
       setCepAviso('Não deu para consultar o CEP agora. Preencha o endereço abaixo.');
@@ -214,6 +231,7 @@ export function EnderecoCampos({
           erro={erroDe('referencia')}
         />
       </div>
+      <LocalizacaoEndereco valor={valor} aoMudar={aoMudar} tipo={tipo} />
     </div>
   );
 }

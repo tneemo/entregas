@@ -16,6 +16,7 @@ import { lerCorpo } from '../validar.ts';
 import { exigirEmpresa } from '../middleware/empresa.ts';
 import { escopoPedidos } from '../dados/escopo-pedidos.ts';
 import { avisar } from '../central/avisar.ts';
+import { comLocalizacao } from '../geocodificacao.ts';
 
 const escopo = (c: { var: AppEnv['Variables'] }) => escopoPedidos(c.var.db, c.var.empresa);
 
@@ -36,6 +37,13 @@ export const rotasPedidos = new Hono<AppEnv>()
 
   .post('/', exigirEmpresa('admin', 'despachante'), async (c) => {
     const dados = await lerCorpo(c, schemaCriarPedido);
+    // Endereço sem pino (painel não achou, ou API/integração): tenta pelo texto, sem travar o pedido.
+    const [coleta, entrega] = await Promise.all([
+      comLocalizacao(c.env, dados.coleta.endereco),
+      comLocalizacao(c.env, dados.entrega.endereco),
+    ]);
+    dados.coleta.endereco = coleta;
+    dados.entrega.endereco = entrega;
     const pedido = await escopo(c).criar(dados);
     avisar(c, c.var.empresa.empresaId, (central) =>
       central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null),

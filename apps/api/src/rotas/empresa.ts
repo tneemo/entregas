@@ -8,6 +8,8 @@ import {
   schemaAtualizarDadosEmpresa,
   schemaAtualizarMembro,
   schemaCriarConvite,
+  schemaEndereco,
+  type LocalizarResposta,
 } from '@entregas/shared';
 import type { AppEnv } from '../tipos.ts';
 import { ErroApi, naoEncontrado, proibido } from '../erros.ts';
@@ -15,6 +17,7 @@ import { lerCorpo } from '../validar.ts';
 import { exigirEmpresa } from '../middleware/empresa.ts';
 import { escopoEmpresa } from '../dados/escopo-empresa.ts';
 import { escopoPedidos } from '../dados/escopo-pedidos.ts';
+import { comLocalizacao, geocodificar } from '../geocodificacao.ts';
 
 const escopo = (c: { var: AppEnv['Variables'] }) => escopoEmpresa(c.var.db, c.var.empresa);
 
@@ -23,7 +26,15 @@ export const rotasEmpresa = new Hono<AppEnv>()
 
   .patch('/', exigirEmpresa('admin'), async (c) => {
     const dados = await lerCorpo(c, schemaAtualizarDadosEmpresa);
+    // Endereço da loja é o ponto de coleta padrão: sem pino marcado, tenta achar pelo texto.
+    if (dados.endereco) dados.endereco = await comLocalizacao(c.env, dados.endereco);
     return c.json(await escopo(c).atualizarDados(dados));
+  })
+
+  /** Busca o ponto no mapa de um endereço digitado (painel: novo pedido, dados da empresa). */
+  .post('/enderecos/localizar', exigirEmpresa('admin', 'despachante'), async (c) => {
+    const endereco = await lerCorpo(c, schemaEndereco);
+    return c.json<LocalizarResposta>({ localizacao: await geocodificar(c.env, endereco) });
   })
 
   .get('/motoboys', exigirEmpresa('admin', 'despachante'), async (c) =>

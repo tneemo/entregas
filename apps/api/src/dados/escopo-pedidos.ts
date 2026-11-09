@@ -14,6 +14,7 @@ import {
   acoesPermitidas,
   atorDoPapel,
   caminhoRastreio,
+  distanciaMetros,
   fotoObrigatoria,
   statusFinal,
   type AcaoPedido,
@@ -286,6 +287,12 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       const x = pontos.find((ponto) => ponto.tipo === tipo)!;
       return { tipo, nome: x.nome, telefone: x.telefone, endereco: x.endereco };
     };
+    const destino = parada('entrega').endereco.localizacao;
+    /** Onde o motoboy estava ao registrar a ação, comparado ao ponto de entrega (ex.: "entregue" a 2 km). */
+    const distanciaDaEntrega = (lat: number | null, lng: number | null) =>
+      destino && lat != null && lng != null
+        ? Math.round(distanciaMetros(destino, { latitude: lat, longitude: lng }))
+        : null;
     const codigoBloqueado = p.tentativasCodigo >= MAX_TENTATIVAS_CODIGO;
     let acoes = acoesPermitidas(p.status, ator);
     // Código bloqueado: nem com código nem sem ele; só a central confirma.
@@ -313,6 +320,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
         motivo: e.motivo,
         detalhe: e.detalhe,
         criadoEm: e.criadoEm.toISOString(),
+        distanciaDaEntregaM: distanciaDaEntrega(e.latitude, e.longitude),
       })),
       fotos: fotos.map(
         (f): FotoResposta => ({

@@ -55,6 +55,7 @@
   // Segredos (wrangler secret put --env <ambiente>):
   //   SETUP_TOKEN — usado uma única vez para criar o primeiro super admin.
   //   SENTRY_DSN  — opcional; sem ele os erros ficam só nos logs da Cloudflare.
+  //   GOOGLE_MAPS_API_KEY — opcional; sem ela, endereços são buscados no OpenStreetMap (só acha a rua).
 
   // O que está acima é o desenvolvimento local (wrangler dev, testes). O que vai para a Cloudflare
   // são os ambientes abaixo, publicados pelo GitHub Actions (.github/workflows):

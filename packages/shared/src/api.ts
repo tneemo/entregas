@@ -2,6 +2,7 @@
 
 import type { Papel, StatusEmpresa, StatusVinculo, TipoEmpresa, TipoVinculo } from './papeis.ts';
 import type { AcaoPedido, FormaPagamento, RegrasEntrega, StatusPedido, TipoFoto } from './pedidos.ts';
+import type { Localizacao } from './localizacao.ts';
 
 export interface ErroResposta {
   erro: { codigo: string; mensagem: string; campos?: Record<string, string[]> };
@@ -102,6 +103,14 @@ export interface EnderecoResposta {
   cidade: string;
   uf: string;
   referencia?: string;
+  /** Ponto no mapa; ausente em endereços antigos ou que nenhum geocodificador achou. */
+  localizacao?: Localizacao;
+}
+
+/** POST /empresas/:empresaId/enderecos/localizar */
+export interface LocalizarResposta {
+  /** null: o geocodificador não achou (ou está desligado). A pessoa pode marcar no mapa. */
+  localizacao: Localizacao | null;
 }
 
 export interface DadosEmpresaResposta extends EmpresaResposta, RegrasEntrega {
@@ -149,6 +158,11 @@ export interface EventoPedidoResposta {
   motivo: string | null;
   detalhe: string | null;
   criadoEm: string;
+  /**
+   * Distância entre onde o motoboy estava ao registrar a ação e o ponto de entrega, em metros.
+   * Só quando os dois pontos existem. Acima de LONGE_DO_DESTINO_M, o painel destaca.
+   */
+  distanciaDaEntregaM: number | null;
 }
 
 export interface PedidoDetalhe extends PedidoResumo {

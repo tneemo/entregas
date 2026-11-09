@@ -150,6 +150,18 @@ O primeiro super admin é criado na tela de configuração inicial do painel, co
 (`npx wrangler secret put SETUP_TOKEN --env homologacao`, ou `--env producao`). Depois disso ele não serve
 para mais nada e pode ser apagado com `npx wrangler secret delete SETUP_TOKEN --env <ambiente>`.
 
+### Busca de endereços no mapa (Google, opcional)
+
+Sem configuração, a API busca os endereços no OpenStreetMap, que em Cascavel só acha a rua: o painel avisa e
+pede para arrastar o pino até a porta. Com uma conta no Google Cloud (faturamento ativo; o uso do piloto cabe na
+cota gratuita), ative a **Geocoding API**, crie uma chave restrita a ela e guarde no Worker:
+
+```bash
+npx wrangler secret put GOOGLE_MAPS_API_KEY --env homologacao
+```
+
+(e `--env producao`). Nos testes, `GEOCODIFICADOR=desligado` evita qualquer consulta externa.
+
 ### Monitoramento de erros (Sentry, opcional)
 
 Sem configuração, nada é enviado e os erros da API ficam só nos logs da Cloudflare. Com uma conta no
