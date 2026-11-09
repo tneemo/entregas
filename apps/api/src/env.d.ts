@@ -7,4 +7,6 @@ interface Env {
   GOOGLE_MAPS_API_KEY?: string;
   /** "desligado" não consulta nenhum geocodificador (testes). */
   GEOCODIFICADOR?: string;
+  /** Token de acesso da conta Expo, se o projeto exigir (Enhanced Security for Push Notifications). */
+  EXPO_ACCESS_TOKEN?: string;
 }

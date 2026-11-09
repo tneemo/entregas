@@ -150,6 +150,31 @@ O primeiro super admin é criado na tela de configuração inicial do painel, co
 (`npx wrangler secret put SETUP_TOKEN --env homologacao`, ou `--env producao`). Depois disso ele não serve
 para mais nada e pode ser apagado com `npx wrangler secret delete SETUP_TOKEN --env <ambiente>`.
 
+### Notificação no celular do motoboy (Firebase, uma vez)
+
+A API já envia (pelo Expo Push); falta o app saber falar com o Firebase. Sem isto o app funciona, mas só
+descobre pedido novo quando está aberto (consulta a cada 15 s), e o painel mostra "sem notificação".
+
+1. No [Firebase](https://console.firebase.google.com), crie um projeto e adicione um app **Android** com o pacote
+   `br.com.entregas.motoboy`. Baixe o `google-services.json` (fica fora do git, está no `.gitignore`).
+2. Entregue o arquivo aos builds pelo EAS, dentro de `apps/motoboy`:
+
+```bash
+npx eas-cli env:create --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --environment preview --environment production --visibility secret
+```
+
+3. No Firebase, em *Configurações do projeto → Contas de serviço*, gere uma chave privada (JSON) e envie para
+   o EAS em *Android → Push Notifications (FCM V1)*:
+
+```bash
+npx eas-cli credentials -p android
+```
+
+4. Gere um APK novo (`--profile homologacao` ou `teste`). Ao entrar, o app pede permissão de notificação.
+
+Se o projeto no Expo exigir token para enviar (*Enhanced Security for Push Notifications*), guarde-o no Worker
+com `npx wrangler secret put EXPO_ACCESS_TOKEN --env <ambiente>`.
+
 ### Busca de endereços no mapa (Google, opcional)
 
 Sem configuração, a API busca os endereços no OpenStreetMap, que em Cascavel só acha a rua: o painel avisa e

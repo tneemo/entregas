@@ -124,6 +124,15 @@ export interface MotoboyResumo {
   pedidosAtivos: number;
   /** Com turno aberto nesta empresa agora. */
   emTurno: boolean;
+  /** Tem o app aberto em algum celular com notificação ligada: fica sabendo do pedido na hora. */
+  recebeNotificacao: boolean;
+}
+
+/** O que vai junto na notificação, para o app abrir a tela certa ao tocar. */
+export interface DadosNotificacao {
+  tipo: 'pedido';
+  empresaId: string;
+  pedidoId: string;
 }
 
 export interface ParadaResposta {

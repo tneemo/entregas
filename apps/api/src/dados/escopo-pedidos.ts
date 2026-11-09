@@ -33,11 +33,13 @@ import type { z } from 'zod';
 import type { Db } from '../db/index.ts';
 import {
   clientes,
+  dispositivos,
   empresas,
   eventosPedido,
   fotosPedido,
   paradas,
   pedidos,
+  sessoes,
   turnos,
   usuarios,
   vinculos,
@@ -127,7 +129,7 @@ function eventoSeMudou(d1: D1Database, e: NovoEvento) {
  */
 export async function expirarAceites(db: Db, agora = new Date()) {
   const vencidos = await db
-    .select({ id: pedidos.id, empresaId: pedidos.empresaId, usuarioId: vinculos.usuarioId })
+    .select({ id: pedidos.id, numero: pedidos.numero, empresaId: pedidos.empresaId, usuarioId: vinculos.usuarioId })
     .from(pedidos)
     .innerJoin(vinculos, eq(vinculos.id, pedidos.motoboyVinculoId))
     .where(and(eq(pedidos.status, 'atribuido'), lte(pedidos.aceiteAte, agora)))
@@ -167,7 +169,7 @@ export async function expirarAceites(db: Db, agora = new Date()) {
   const resultados = await d1.batch(instrucoes);
   return vencidos
     .filter((_, i) => resultados[i * 2]!.meta.changes === 1)
-    .map((p) => ({ empresaId: p.empresaId, pedidoId: p.id }));
+    .map((p) => ({ empresaId: p.empresaId, pedidoId: p.id, numero: p.numero, usuarioId: p.usuarioId }));
 }
 
 export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
@@ -436,7 +438,12 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       return detalhe(pedidoId);
     },
 
-    async executar(pedidoId: string, acao: AcaoPedido, dados: DadosAcao): Promise<PedidoDetalhe> {
+    /** `motoboyAntes`: vínculo de quem estava com o pedido antes da ação (para avisar quem o perdeu). */
+    async executar(
+      pedidoId: string,
+      acao: AcaoPedido,
+      dados: DadosAcao,
+    ): Promise<{ pedido: PedidoDetalhe; motoboyAntes: string | null }> {
       const pedido = await db
         .select()
         .from(pedidos)
@@ -562,7 +569,18 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
           'O pedido acabou de mudar de situação. Atualize a tela e tente de novo.',
         );
       }
-      return detalhe(pedido.id, true);
+      return { pedido: await detalhe(pedido.id, true), motoboyAntes: pedido.motoboyVinculoId };
+    },
+
+    /** Pessoa (usuário) de cada vínculo de motoboy desta empresa, para mandar notificação. */
+    async usuariosDosMotoboys(vinculoIds: string[]): Promise<Map<string, string>> {
+      if (vinculoIds.length === 0) return new Map();
+      const linhas = await db
+        .select({ vinculoId: vinculos.id, usuarioId: vinculos.usuarioId })
+        .from(vinculos)
+        .where(and(eq(vinculos.empresaId, empresaId), inArray(vinculos.id, vinculoIds)))
+        .all();
+      return new Map(linhas.map((l) => [l.vinculoId, l.usuarioId]));
     },
 
     async motoboys(): Promise<MotoboyResumo[]> {
@@ -577,6 +595,11 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
               sql<number>`EXISTS (SELECT 1 FROM ${turnos} WHERE ${turnos.vinculoId} = ${vinculos.id} AND ${turnos.encerradoEm} IS NULL)`
                 .mapWith(Boolean)
                 .as('em_turno'),
+            // Algum celular com o app logado (sessão válida) e notificação ligada.
+            recebeNotificacao:
+              sql<number>`EXISTS (SELECT 1 FROM ${dispositivos} INNER JOIN ${sessoes} ON ${sessoes.id} = ${dispositivos.sessaoId} WHERE ${dispositivos.usuarioId} = ${vinculos.usuarioId} AND ${sessoes.expiraEm} > ${Date.now()})`
+                .mapWith(Boolean)
+                .as('recebe_notificacao'),
           })
           .from(vinculos)
           .innerJoin(usuarios, eq(usuarios.id, vinculos.usuarioId))

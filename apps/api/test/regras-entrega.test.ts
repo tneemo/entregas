@@ -221,7 +221,7 @@ describe('prazo de aceite', () => {
     expect((await verPelaCentral(eq, p.id)).corpo.status).toBe('atribuido');
 
     const voltaram = await expirarAceites(db, new Date(prazo));
-    expect(voltaram).toContainEqual({ empresaId: E, pedidoId: p.id });
+    expect(voltaram).toContainEqual(expect.objectContaining({ empresaId: E, pedidoId: p.id }));
 
     const visao = await verPelaCentral(eq, p.id);
     expect(visao.corpo).toMatchObject({ status: 'pendente', motoboy: null, aceiteAte: null });
@@ -293,7 +293,7 @@ describe('cron do prazo de aceite', () => {
       .set({ aceiteAte: new Date(Date.now() - 1_000) })
       .where(igual(pedidos.id, p.id));
     const voltaram = await vencerPrazosDeAceite(env);
-    expect(voltaram).toContainEqual({ empresaId: E, pedidoId: p.id });
+    expect(voltaram).toContainEqual(expect.objectContaining({ empresaId: E, pedidoId: p.id }));
     expect(await ws.conexao.esperar((m) => m.tipo === 'pedido')).toEqual({
       tipo: 'pedido',
       pedidoId: p.id,

@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ProvedorSessao } from '../src/sessao.tsx';
+import { OuvirNotificacoes } from '../src/notificacoes.ts';
 import { cores, espaco, texto } from '../src/tema.ts';
 import { Botao } from '../src/componentes.tsx';
 
@@ -36,6 +37,7 @@ function Layout() {
     <SafeAreaProvider>
       <QueryClientProvider client={consultas}>
         <ProvedorSessao>
+          <OuvirNotificacoes />
           <StatusBar style="light" />
           <Stack
             screenOptions={{

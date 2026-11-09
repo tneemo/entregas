@@ -43,6 +43,13 @@
           "microphonePermission": false
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0b3d91",
+          "defaultChannel": "pedidos"
+        }
+      ],
       "@sentry/react-native"
     ],
     "experiments": {

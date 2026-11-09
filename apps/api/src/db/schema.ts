@@ -2,7 +2,7 @@
 //
 // Regra multi-tenant: toda tabela com dados de uma empresa tem `empresa_id`
 // e só é acessada pelos escopos em src/dados/escopo-*.ts.
-// Tabelas globais: cidades, empresas, usuarios, sessoes, falhas_login.
+// Tabelas globais: cidades, empresas, usuarios, sessoes, dispositivos, falhas_login.
 
 import { sql } from 'drizzle-orm';
 import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
@@ -112,6 +112,28 @@ export const sessoes = sqliteTable(
     expiraEm: integer('expira_em', { mode: 'timestamp_ms' }).notNull(),
   },
   (t) => [index('sessoes_usuario_idx').on(t.usuarioId)],
+);
+
+/**
+ * Celular que recebe notificação (Expo Push). Preso à sessão do app: sair, ser desconectado
+ * ou a sessão vencer apaga o registro junto, e ninguém recebe aviso de quem já saiu.
+ */
+export const dispositivos = sqliteTable(
+  'dispositivos',
+  {
+    /** Token do Expo Push ("ExponentPushToken[...]"): um por aparelho e instalação do app. */
+    token: text('token').primaryKey(),
+    sessaoId: text('sessao_id')
+      .notNull()
+      .references(() => sessoes.id, { onDelete: 'cascade' }),
+    usuarioId: text('usuario_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    plataforma: text('plataforma', { enum: ['android', 'ios'] }).notNull(),
+    criadoEm: criadoEm(),
+    atualizadoEm: atualizadoEm(),
+  },
+  (t) => [index('dispositivos_usuario_idx').on(t.usuarioId), index('dispositivos_sessao_idx').on(t.sessaoId)],
 );
 
 export const falhasLogin = sqliteTable(

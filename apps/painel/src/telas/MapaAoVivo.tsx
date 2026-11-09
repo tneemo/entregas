@@ -65,6 +65,11 @@ function LinhaMotoboy({
             ? `Sem sinal há ${tempoDesde(posicao.registradoEm, agora)}`
             : `Posição atualizada há ${tempoDesde(posicao.registradoEm, agora)}`}
       </span>
+      {!motoboy.recebeNotificacao && (
+        <span className="text-sm text-concreto">
+          Sem notificação no celular: pedido novo, só com o app aberto. Avise por telefone.
+        </span>
+      )}
       {pedidos.length > 0 && (
         <ul className="flex flex-col gap-1">
           {pedidos.map((p) => (
