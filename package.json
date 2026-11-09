@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.6",
-    "concurrently": "^9.2.1",
+    "concurrently": "^10.0.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "typescript": "6.0.3",
