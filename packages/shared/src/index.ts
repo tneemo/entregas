@@ -5,4 +5,5 @@ export * from './dinheiro.ts';
 export * from './schemas.ts';
 export * from './rastreio.ts';
 export * from './privacidade.ts';
+export * from './localizacao.ts';
 export type * from './api.ts';

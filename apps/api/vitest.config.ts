@@ -13,6 +13,8 @@ export default defineConfig(async () => {
             TEST_MIGRATIONS: migracoes,
             SETUP_TOKEN: 'token-de-teste',
             ORIGENS_APP: 'http://localhost:8081',
+            // Nada de chamadas ao Google/OpenStreetMap nos testes.
+            GEOCODIFICADOR: 'desligado',
           },
         },
       }),

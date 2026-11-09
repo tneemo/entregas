@@ -9,6 +9,7 @@ import {
 } from './validacao.ts';
 import { PAPEIS, STATUS_EMPRESA, STATUS_VINCULO, TIPOS_EMPRESA, TIPOS_VINCULO } from './papeis.ts';
 import { ACOES_PEDIDO, FORMAS_PAGAMENTO } from './pedidos.ts';
+import { FONTES_LOCALIZACAO, PRECISOES_LOCALIZACAO } from './localizacao.ts';
 
 // Campos reutilizáveis ------------------------------------------------------
 
@@ -125,6 +126,13 @@ const textoOpcional = (max: number) =>
     .transform((v) => v || undefined)
     .optional();
 
+export const schemaLocalizacao = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  precisao: z.enum(PRECISOES_LOCALIZACAO),
+  fonte: z.enum(FONTES_LOCALIZACAO),
+});
+
 export const schemaEndereco = z.object({
   cep: z
     .string()
@@ -143,6 +151,8 @@ export const schemaEndereco = z.object({
     .length(2, 'UF tem 2 letras.')
     .transform((v) => v.toUpperCase()),
   referencia: textoOpcional(160),
+  /** Ponto no mapa. Sem ele, a API tenta achar pelo texto ao salvar (sem impedir o pedido). */
+  localizacao: schemaLocalizacao.optional(),
 });
 
 export type Endereco = z.output<typeof schemaEndereco>;

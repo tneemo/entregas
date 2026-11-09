@@ -103,7 +103,7 @@ export function DadosEmpresa() {
               ? 'É de onde saem as entregas: vira o endereço de coleta padrão nos pedidos.'
               : 'Endereço da base da empresa.'}
           </p>
-          <EnderecoCampos valor={endereco} aoMudar={setEndereco} erro={salvar.error} prefixo="endereco" />
+          <EnderecoCampos valor={endereco} aoMudar={setEndereco} erro={salvar.error} prefixo="endereco" tipo="coleta" />
         </fieldset>
         <fieldset className="flex flex-col gap-4">
           <legend className="mb-1 font-cond text-2xl font-semibold">Regras de entrega</legend>

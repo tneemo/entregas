@@ -8,6 +8,7 @@ import {
   TRANSICOES,
   formatarReais,
   formatarTelefone,
+  localizacaoExata,
   statusFinal,
   type AcaoPedido,
   type DadosAcaoPedido,
@@ -63,29 +64,42 @@ function enderecoTexto(p: ParadaResposta) {
   return `${e.logradouro}, ${e.numero}${e.complemento ? ` (${e.complemento})` : ''}, ${e.bairro}, ${e.cidade} - ${e.uf}`;
 }
 
+/**
+ * Para onde o GPS leva. Com o ponto exato (marcado no mapa pela central ou achado no número),
+ * vai pela coordenada: chega na porta mesmo com nome de rua escrito diferente. Com ponto
+ * aproximado (só a rua), o texto do endereço costuma ser melhor para o próprio Google/Waze.
+ */
+function destinos(parada: ParadaResposta) {
+  const l = parada.endereco.localizacao;
+  if (localizacaoExata(l)) {
+    const ponto = `${l.latitude},${l.longitude}`;
+    return {
+      google: `https://www.google.com/maps/dir/?api=1&destination=${ponto}&travelmode=driving`,
+      waze: `https://waze.com/ul?ll=${ponto}&navigate=yes`,
+    };
+  }
+  const texto = encodeURIComponent(enderecoTexto(parada));
+  return {
+    google: `https://www.google.com/maps/dir/?api=1&destination=${texto}&travelmode=driving`,
+    waze: `https://waze.com/ul?q=${texto}&navigate=yes`,
+  };
+}
+
 function Parada({ titulo, parada }: { titulo: string; parada: ParadaResposta }) {
-  const destino = encodeURIComponent(enderecoTexto(parada));
+  const links = destinos(parada);
+  const aproximado = parada.endereco.localizacao && !localizacaoExata(parada.endereco.localizacao);
   return (
     <Secao titulo={titulo}>
       {parada.nome ? <Text style={[texto.corpo, { fontWeight: '700' }]}>{parada.nome}</Text> : null}
       <Text style={[texto.corpo, { fontSize: 19 }]}>{enderecoTexto(parada)}</Text>
       {parada.endereco.referencia ? <Text style={texto.apoio}>Referência: {parada.endereco.referencia}</Text> : null}
+      {aproximado ? <Text style={texto.apoio}>Local aproximado no mapa: confira o número na rua.</Text> : null}
       <View style={{ flexDirection: 'row', gap: espaco.p, flexWrap: 'wrap' }}>
         <View style={{ flexGrow: 1 }}>
-          <Botao
-            titulo="Google Maps"
-            variante="secundario"
-            aoTocar={() =>
-              Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destino}&travelmode=driving`)
-            }
-          />
+          <Botao titulo="Google Maps" variante="secundario" aoTocar={() => Linking.openURL(links.google)} />
         </View>
         <View style={{ flexGrow: 1 }}>
-          <Botao
-            titulo="Waze"
-            variante="secundario"
-            aoTocar={() => Linking.openURL(`https://waze.com/ul?q=${destino}&navigate=yes`)}
-          />
+          <Botao titulo="Waze" variante="secundario" aoTocar={() => Linking.openURL(links.waze)} />
         </View>
       </View>
       {parada.telefone ? (

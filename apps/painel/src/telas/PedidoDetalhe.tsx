@@ -1,15 +1,19 @@
-import { useState, type FormEvent } from 'react';
+import { lazy, Suspense, useMemo, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  LONGE_DO_DESTINO_M,
   ROTULOS_EVENTO,
   ROTULOS_PAGAMENTO,
+  ROTULOS_PRECISAO,
   ROTULOS_STATUS,
   TRANSICOES,
   formatarReais,
   formatarTelefone,
+  textoDistancia,
   type AcaoPedido,
   type DadosAcaoPedido,
+  type EventoPedidoResposta,
   type ParadaResposta,
   type PedidoDetalhe as Pedido,
 } from '@entregas/shared';
@@ -17,6 +21,53 @@ import { api } from '../api.ts';
 import { useEu } from '../sessao.ts';
 import { AreaTexto, AvisoErro, Botao, Campo, Selecao, erroDoCampo } from '../componentes/ui.tsx';
 import { SeloStatus, enderecoEmLinha, horaCurta, rotuloMotoboy, useMotoboys } from '../componentes/pedido.tsx';
+import type { Marcador } from '../componentes/Mapa.tsx';
+
+// O mapa (Leaflet) só baixa quando o pedido tem algum ponto para mostrar.
+const Mapa = lazy(() => import('../componentes/Mapa.tsx').then((m) => ({ default: m.Mapa })));
+
+/** Ações que o motoboy faz na porta do cliente: longe dela, a central precisa saber. */
+const ACOES_NA_PORTA = new Set<EventoPedidoResposta['acao']>(['entregar', 'entregar_sem_codigo', 'falhar']);
+
+function DistanciaDaPorta({ evento }: { evento: EventoPedidoResposta }) {
+  const metros = evento.distanciaDaEntregaM;
+  if (metros === null || !ACOES_NA_PORTA.has(evento.acao)) return null;
+  if (metros <= LONGE_DO_DESTINO_M) {
+    return <p className="text-sm text-ok">No endereço de entrega (a {textoDistancia(metros)}).</p>;
+  }
+  return (
+    <p className="border-l-4 border-aluguel bg-white px-2 py-1 text-sm">
+      Registrado a {textoDistancia(metros)} do endereço de entrega. Confira com o motoboy.
+    </p>
+  );
+}
+
+function MapaDoPedido({ pedido }: { pedido: Pedido }) {
+  const marcadores = useMemo(() => {
+    const lista: Marcador[] = [];
+    for (const [tipo, parada] of [
+      ['coleta', pedido.coleta],
+      ['entrega', pedido.entrega],
+    ] as const) {
+      const l = parada.endereco.localizacao;
+      if (l)
+        lista.push({
+          id: tipo,
+          tipo,
+          latitude: l.latitude,
+          longitude: l.longitude,
+          rotulo: tipo === 'coleta' ? 'Coleta' : 'Entrega',
+        });
+    }
+    return lista;
+  }, [pedido.coleta, pedido.entrega]);
+  if (marcadores.length === 0) return null;
+  return (
+    <Suspense fallback={<div className="h-72 rounded-md border border-linha bg-linha/40" />}>
+      <Mapa marcadores={marcadores} rotulo={`Mapa do pedido ${pedido.numero}: coleta e entrega`} className="h-72" />
+    </Suspense>
+  );
+}
 
 function Parada({ titulo, parada }: { titulo: string; parada: ParadaResposta }) {
   const e = parada.endereco;
@@ -35,6 +86,11 @@ function Parada({ titulo, parada }: { titulo: string; parada: ParadaResposta }) 
         {e.cep ? `, CEP ${e.cep.replace(/(\d{5})(\d{3})/, '$1-$2')}` : ''}
       </p>
       {e.referencia && <p className="text-sm">Referência: {e.referencia}</p>}
+      {!e.localizacao ? (
+        <p className="text-sm text-concreto">Sem ponto no mapa: o motoboy navega pelo endereço escrito.</p>
+      ) : e.localizacao.precisao !== 'numero' ? (
+        <p className="text-sm text-concreto">Ponto no mapa {ROTULOS_PRECISAO[e.localizacao.precisao]}.</p>
+      ) : null}
     </section>
   );
 }
@@ -268,6 +324,7 @@ export function PedidoDetalhe() {
             <Parada titulo="Entregar para" parada={p.entrega} />
             <Parada titulo="Coletar em" parada={p.coleta} />
           </div>
+          <MapaDoPedido pedido={p} />
           <section className="flex flex-col gap-1">
             <h2 className="text-xl">Pagamento</h2>
             <p>
@@ -346,6 +403,7 @@ export function PedidoDetalhe() {
                         {e.acao === 'entregar_sem_codigo' ? 'Com quem ficou' : 'Motivo'}: {e.motivo}
                       </p>
                     )}
+                    <DistanciaDaPorta evento={e} />
                   </div>
                 </li>
               ))}

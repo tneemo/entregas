@@ -9,7 +9,8 @@
     "./rastreio": "./src/rastreio.ts",
     "./dinheiro": "./src/dinheiro.ts",
     "./validacao": "./src/validacao.ts",
-    "./privacidade": "./src/privacidade.ts"
+    "./privacidade": "./src/privacidade.ts",
+    "./localizacao": "./src/localizacao.ts"
   },
   "scripts": {
     "test": "vitest run",

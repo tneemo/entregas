@@ -166,7 +166,7 @@ export function NovoPedido() {
               required
             />
           </div>
-          <EnderecoCampos valor={entrega} aoMudar={setEntrega} erro={erro} prefixo="entrega.endereco" />
+          <EnderecoCampos valor={entrega} aoMudar={setEntrega} erro={erro} prefixo="entrega.endereco" tipo="entrega" />
         </Secao>
 
         <Secao titulo="Coleta">
@@ -204,7 +204,7 @@ export function NovoPedido() {
                   erro={erroDoCampo(erro, 'coleta.telefone')}
                 />
               </div>
-              <EnderecoCampos valor={coleta} aoMudar={setColeta} erro={erro} prefixo="coleta.endereco" />
+              <EnderecoCampos valor={coleta} aoMudar={setColeta} erro={erro} prefixo="coleta.endereco" tipo="coleta" />
             </>
           )}
         </Secao>
