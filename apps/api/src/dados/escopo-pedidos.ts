@@ -30,7 +30,17 @@ import {
 } from '@entregas/shared';
 import type { z } from 'zod';
 import type { Db } from '../db/index.ts';
-import { clientes, empresas, eventosPedido, fotosPedido, paradas, pedidos, turnos, usuarios, vinculos } from '../db/schema.ts';
+import {
+  clientes,
+  empresas,
+  eventosPedido,
+  fotosPedido,
+  paradas,
+  pedidos,
+  turnos,
+  usuarios,
+  vinculos,
+} from '../db/schema.ts';
 import type { ContextoEmpresa } from '../tipos.ts';
 import { ErroApi, camposInvalidos, naoEncontrado, proibido } from '../erros.ts';
 import { gerarToken } from '../auth/cripto.ts';
@@ -42,7 +52,8 @@ type DadosAcao = z.output<typeof schemaAcaoPedidoComPosicao>;
 const ASSINATURAS: Record<string, (b: Uint8Array) => boolean> = {
   'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
   'image/png': (b) => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47,
-  'image/webp': (b) => String.fromCharCode(...b.slice(0, 4)) === 'RIFF' && String.fromCharCode(...b.slice(8, 12)) === 'WEBP',
+  'image/webp': (b) =>
+    String.fromCharCode(...b.slice(0, 4)) === 'RIFF' && String.fromCharCode(...b.slice(8, 12)) === 'WEBP',
 };
 const EXTENSAO: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 export type Situacao = 'ativos' | 'concluidos';
@@ -241,7 +252,9 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
    */
   async function detalhe(pedidoId: string, logoAposAcao = false): Promise<PedidoDetalhe> {
     const filtro = logoAposAcao ? eq(pedidos.empresaId, empresaId) : visiveis();
-    const linha = await consultaResumo().where(and(filtro, eq(pedidos.id, pedidoId))).get();
+    const linha = await consultaResumo()
+      .where(and(filtro, eq(pedidos.id, pedidoId)))
+      .get();
     if (!linha) throw naoEncontrado('Pedido não encontrado.');
 
     const [pontos, eventos, fotos, regrasEmpresa] = await Promise.all([
@@ -340,7 +353,12 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       // Guarda o destinatário para preencher o próximo pedido pelo telefone.
       const cliente = await db
         .insert(clientes)
-        .values({ empresaId, nome: dados.entrega.nome, telefone: dados.entrega.telefone, endereco: dados.entrega.endereco })
+        .values({
+          empresaId,
+          nome: dados.entrega.nome,
+          telefone: dados.entrega.telefone,
+          endereco: dados.entrega.endereco,
+        })
         .onConflictDoUpdate({
           target: [clientes.empresaId, clientes.telefone],
           set: { nome: dados.entrega.nome, endereco: dados.entrega.endereco, atualizadoEm: new Date() },
@@ -373,13 +391,37 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
           criadoPor: ctx.usuarioId,
         }),
         db.insert(paradas).values([
-          { empresaId, pedidoId, ordem: 0, tipo: 'coleta', nome: dados.coleta.nome ?? null, telefone: dados.coleta.telefone ?? null, endereco: dados.coleta.endereco },
-          { empresaId, pedidoId, ordem: 1, tipo: 'entrega', nome: dados.entrega.nome, telefone: dados.entrega.telefone, endereco: dados.entrega.endereco },
+          {
+            empresaId,
+            pedidoId,
+            ordem: 0,
+            tipo: 'coleta',
+            nome: dados.coleta.nome ?? null,
+            telefone: dados.coleta.telefone ?? null,
+            endereco: dados.coleta.endereco,
+          },
+          {
+            empresaId,
+            pedidoId,
+            ordem: 1,
+            tipo: 'entrega',
+            nome: dados.entrega.nome,
+            telefone: dados.entrega.telefone,
+            endereco: dados.entrega.endereco,
+          },
         ]),
         db.insert(eventosPedido).values([
           { ...evento, acao: 'criar', de: null, para: 'pendente' },
           ...(motoboy
-            ? [{ ...evento, acao: 'atribuir' as const, de: 'pendente' as const, para: 'atribuido' as const, detalhe: motoboy.nome }]
+            ? [
+                {
+                  ...evento,
+                  acao: 'atribuir' as const,
+                  de: 'pendente' as const,
+                  para: 'atribuido' as const,
+                  detalhe: motoboy.nome,
+                },
+              ]
             : []),
         ]),
       ]);
@@ -439,7 +481,9 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
           throw new ErroApi(
             422,
             'foto_obrigatoria',
-            acao === 'falhar' ? 'Tire uma foto do local antes de registrar.' : 'Tire a foto do comprovante antes de confirmar.',
+            acao === 'falhar'
+              ? 'Tire uma foto do local antes de registrar.'
+              : 'Tire a foto do comprovante antes de confirmar.',
           );
         }
       }
@@ -504,31 +548,37 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
         }),
       ]);
       if (resultado!.meta.changes !== 1) {
-        throw new ErroApi(409, 'pedido_mudou', 'O pedido acabou de mudar de situação. Atualize a tela e tente de novo.');
+        throw new ErroApi(
+          409,
+          'pedido_mudou',
+          'O pedido acabou de mudar de situação. Atualize a tela e tente de novo.',
+        );
       }
       return detalhe(pedido.id, true);
     },
 
     async motoboys(): Promise<MotoboyResumo[]> {
-      return db
-        .select({
-          vinculoId: vinculos.id,
-          nome: usuarios.nome,
-          telefone: usuarios.telefone,
-          pedidosAtivos: count(pedidos.id),
-          emTurno: sql<number>`EXISTS (SELECT 1 FROM ${turnos} WHERE ${turnos.vinculoId} = ${vinculos.id} AND ${turnos.encerradoEm} IS NULL)`.mapWith(Boolean).as('em_turno'),
-        })
-        .from(vinculos)
-        .innerJoin(usuarios, eq(usuarios.id, vinculos.usuarioId))
-        .leftJoin(
-          pedidos,
-          and(eq(pedidos.motoboyVinculoId, vinculos.id), notInArray(pedidos.status, STATUS_FINAIS)),
-        )
-        .where(and(eq(vinculos.empresaId, empresaId), eq(vinculos.papel, 'motoboy'), eq(vinculos.status, 'ativo')))
-        .groupBy(vinculos.id, usuarios.nome, usuarios.telefone)
-        // Quem está em turno aparece primeiro na hora de despachar.
-        .orderBy(sql`em_turno DESC`, asc(usuarios.nome))
-        .all() as Promise<MotoboyResumo[]>;
+      return (
+        db
+          .select({
+            vinculoId: vinculos.id,
+            nome: usuarios.nome,
+            telefone: usuarios.telefone,
+            pedidosAtivos: count(pedidos.id),
+            emTurno:
+              sql<number>`EXISTS (SELECT 1 FROM ${turnos} WHERE ${turnos.vinculoId} = ${vinculos.id} AND ${turnos.encerradoEm} IS NULL)`
+                .mapWith(Boolean)
+                .as('em_turno'),
+          })
+          .from(vinculos)
+          .innerJoin(usuarios, eq(usuarios.id, vinculos.usuarioId))
+          .leftJoin(pedidos, and(eq(pedidos.motoboyVinculoId, vinculos.id), notInArray(pedidos.status, STATUS_FINAIS)))
+          .where(and(eq(vinculos.empresaId, empresaId), eq(vinculos.papel, 'motoboy'), eq(vinculos.status, 'ativo')))
+          .groupBy(vinculos.id, usuarios.nome, usuarios.telefone)
+          // Quem está em turno aparece primeiro na hora de despachar.
+          .orderBy(sql`em_turno DESC`, asc(usuarios.nome))
+          .all() as Promise<MotoboyResumo[]>
+      );
     },
 
     async enviarFoto(
@@ -555,7 +605,16 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       await bucket.put(chave, corpo, { httpMetadata: { contentType: tipoConteudo } });
       const foto = await db
         .insert(fotosPedido)
-        .values({ id, empresaId, pedidoId, tipo, chave, tipoConteudo, tamanhoBytes: corpo.byteLength, enviadoPor: ctx.usuarioId })
+        .values({
+          id,
+          empresaId,
+          pedidoId,
+          tipo,
+          chave,
+          tipoConteudo,
+          tamanhoBytes: corpo.byteLength,
+          enviadoPor: ctx.usuarioId,
+        })
         .returning()
         .get();
       return {
@@ -572,7 +631,14 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
         .select({ chave: fotosPedido.chave, tipoConteudo: fotosPedido.tipoConteudo })
         .from(fotosPedido)
         .innerJoin(pedidos, eq(pedidos.id, fotosPedido.pedidoId))
-        .where(and(visiveis(), eq(fotosPedido.id, fotoId), eq(fotosPedido.pedidoId, pedidoId), eq(fotosPedido.empresaId, empresaId)))
+        .where(
+          and(
+            visiveis(),
+            eq(fotosPedido.id, fotoId),
+            eq(fotosPedido.pedidoId, pedidoId),
+            eq(fotosPedido.empresaId, empresaId),
+          ),
+        )
         .get();
       if (!linha) throw naoEncontrado('Foto não encontrada.');
       return linha;

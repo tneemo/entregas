@@ -37,9 +37,7 @@ export const rotasEmpresa = new Hono<AppEnv>()
     return c.json(await escopoPedidos(c.var.db, c.var.empresa).clientePorTelefone(telefone));
   })
 
-  .get('/membros', exigirEmpresa('admin', 'despachante'), async (c) =>
-    c.json(await escopo(c).listarMembros()),
-  )
+  .get('/membros', exigirEmpresa('admin', 'despachante'), async (c) => c.json(await escopo(c).listarMembros()))
 
   .patch('/membros/:vinculoId', exigirEmpresa('admin'), async (c) => {
     const dados = await lerCorpo(c, schemaAtualizarMembro);

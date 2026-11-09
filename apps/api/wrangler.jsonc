@@ -2,7 +2,11 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "entregas",
   "main": "src/index.ts",
+  // Conta da Cloudflare (não é segredo; o CI usa um token com acesso só a ela).
+  "account_id": "7203ad522c3316d33e11ecfa2cbad9bb",
   "compatibility_date": "2026-08-01",
+  // nodejs_compat: o Sentry (src/monitoramento.ts) usa AsyncLocalStorage para separar cada requisição.
+  "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
 
   // Painel (React) servido pelo mesmo Worker: /api/* vai para o código, o resto para os arquivos estáticos.
@@ -34,6 +38,9 @@
   // Fotos de comprovante de entrega (wrangler r2 bucket create entregas-fotos).
   "r2_buckets": [{ "binding": "FOTOS", "bucket_name": "entregas-fotos" }],
 
+  // Versão publicada: o Sentry usa como "release" para dizer qual deploy gerou cada erro.
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+
   // Todo dia às 03:00 de Cascavel (06:00 UTC): apaga pontos de GPS antigos (LGPD).
   // A cada minuto: pedidos sem aceite no prazo da empresa voltam para a fila.
   // Os textos precisam bater com CRONS em src/tarefas.ts.
@@ -45,12 +52,37 @@
     // Vazio em produção: o app Android não usa CORS.
     "ORIGENS_APP": ""
   },
-  // Segredos (wrangler secret put --env producao): SETUP_TOKEN — usado uma única vez para criar o primeiro super admin.
+  // Segredos (wrangler secret put --env <ambiente>):
+  //   SETUP_TOKEN — usado uma única vez para criar o primeiro super admin.
+  //   SENTRY_DSN  — opcional; sem ele os erros ficam só nos logs da Cloudflare.
 
   // O que está acima é o desenvolvimento local (wrangler dev, testes). O que vai para a Cloudflare
-  // é este ambiente: npm run deploy -w @entregas/api. Assets, cron, observabilidade e as migrations
-  // do Durable Object são herdados; bindings e vars precisam ser repetidos.
+  // são os ambientes abaixo, publicados pelo GitHub Actions (.github/workflows):
+  //   homologacao — a cada push na main; banco e fotos próprios, para testar sem tocar no real.
+  //   producao    — à mão (botão "Run workflow" no GitHub), depois de conferir na homologação.
+  // Assets, cron, observabilidade e as migrations do Durable Object são herdados;
+  // bindings e vars precisam ser repetidos em cada ambiente.
   "env": {
+    "homologacao": {
+      "name": "entregas-homologacao",
+      "durable_objects": {
+        "bindings": [{ "name": "CENTRAL", "class_name": "CentralEmpresa" }]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "entregas-homologacao",
+          "database_id": "ee87d2ad-9896-4279-8e95-4136cdc0a44e",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "FOTOS", "bucket_name": "entregas-fotos-homologacao" }],
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "vars": {
+        "AMBIENTE": "homologacao",
+        "ORIGENS_APP": ""
+      }
+    },
     "producao": {
       "name": "entregas",
       "durable_objects": {
@@ -65,6 +97,7 @@
         }
       ],
       "r2_buckets": [{ "binding": "FOTOS", "bucket_name": "entregas-fotos" }],
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "vars": {
         "AMBIENTE": "producao",
         "ORIGENS_APP": ""

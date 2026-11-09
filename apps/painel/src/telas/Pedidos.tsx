@@ -63,7 +63,15 @@ function Despachar({ empresaId, pedido }: { empresaId: string; pedido: PedidoRes
   );
 }
 
-function LinhaPedido({ empresaId, pedido, concluido }: { empresaId: string; pedido: PedidoResumo; concluido: boolean }) {
+function LinhaPedido({
+  empresaId,
+  pedido,
+  concluido,
+}: {
+  empresaId: string;
+  pedido: PedidoResumo;
+  concluido: boolean;
+}) {
   const destino = pedido.destino;
   return (
     <li className="grid grid-cols-[4rem_1fr] gap-x-4 gap-y-2 border-t border-linha py-3 md:grid-cols-[4rem_1fr_14rem_10rem] md:items-center">
@@ -102,7 +110,9 @@ function LinhaPedido({ empresaId, pedido, concluido }: { empresaId: string; pedi
             : `${ROTULOS_PAGAMENTO[pedido.formaPagamento]}: ${formatarReais(pedido.valorACobrarCentavos)}`}
         </span>
         <span className="block" title={new Date(pedido.criadoEm).toLocaleString('pt-BR')}>
-          {concluido && pedido.concluidoEm ? `Concluído às ${horaCurta(pedido.concluidoEm)}` : `Criado ${haQuanto(pedido.criadoEm)}`}
+          {concluido && pedido.concluidoEm
+            ? `Concluído às ${horaCurta(pedido.concluidoEm)}`
+            : `Criado ${haQuanto(pedido.criadoEm)}`}
         </span>
       </div>
     </li>

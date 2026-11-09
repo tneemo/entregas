@@ -69,7 +69,10 @@ function LinhaMotoboy({
         <ul className="flex flex-col gap-1">
           {pedidos.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
-              <Link to={`/e/${empresaId}/pedidos/${p.id}`} className="font-cond text-base font-semibold text-mercosul hover:underline">
+              <Link
+                to={`/e/${empresaId}/pedidos/${p.id}`}
+                className="font-cond text-base font-semibold text-mercosul hover:underline"
+              >
                 Pedido {p.numero}
               </Link>
               <SeloStatus status={p.status} />

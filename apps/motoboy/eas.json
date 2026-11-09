@@ -4,11 +4,24 @@
     "appVersionSource": "local"
   },
   "build": {
-    "teste": {
+    "homologacao": {
       "distribution": "internal",
+      "environment": "preview",
       "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://entregas.joaopedropavanete.workers.dev"
+        "EXPO_PUBLIC_API_URL": "https://entregas-homologacao.joaopedropavanete.workers.dev",
+        "EXPO_PUBLIC_AMBIENTE": "homologacao",
+        "SENTRY_ALLOW_FAILURE": "true"
+      }
+    },
+    "teste": {
+      "distribution": "internal",
+      "environment": "production",
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://entregas.joaopedropavanete.workers.dev",
+        "EXPO_PUBLIC_AMBIENTE": "producao",
+        "SENTRY_ALLOW_FAILURE": "true"
       }
     }
   }

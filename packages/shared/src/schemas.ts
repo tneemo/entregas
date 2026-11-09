@@ -14,32 +14,20 @@ import { ACOES_PEDIDO, FORMAS_PAGAMENTO } from './pedidos.ts';
 
 const nome = z.string().trim().min(2, 'Informe o nome.').max(120);
 
-export const campoEmail = z
-  .string()
-  .trim()
-  .pipe(z.email('E-mail inválido.'))
-  .transform(normalizarEmail);
+export const campoEmail = z.string().trim().pipe(z.email('E-mail inválido.')).transform(normalizarEmail);
 
-export const campoTelefone = z
-  .string()
-  .transform((v, ctx) => {
-    const tel = normalizarTelefone(v);
-    if (!tel) {
-      ctx.addIssue({ code: 'custom', message: 'Telefone inválido. Use DDD + número.' });
-      return z.NEVER;
-    }
-    return tel;
-  });
+export const campoTelefone = z.string().transform((v, ctx) => {
+  const tel = normalizarTelefone(v);
+  if (!tel) {
+    ctx.addIssue({ code: 'custom', message: 'Telefone inválido. Use DDD + número.' });
+    return z.NEVER;
+  }
+  return tel;
+});
 
-export const campoCpf = z
-  .string()
-  .refine(validarCpf, 'CPF inválido.')
-  .transform(somenteDigitos);
+export const campoCpf = z.string().refine(validarCpf, 'CPF inválido.').transform(somenteDigitos);
 
-export const campoCnpj = z
-  .string()
-  .refine(validarCnpj, 'CNPJ inválido.')
-  .transform(normalizarCnpj);
+export const campoCnpj = z.string().refine(validarCnpj, 'CNPJ inválido.').transform(normalizarCnpj);
 
 export const campoSenha = z
   .string()
@@ -66,7 +54,11 @@ export const schemaSetup = z.object({
 
 export const schemaCriarCidade = z.object({
   nome,
-  uf: z.string().trim().length(2).transform((v) => v.toUpperCase()),
+  uf: z
+    .string()
+    .trim()
+    .length(2)
+    .transform((v) => v.toUpperCase()),
   codigoIbge: z.string().regex(/^\d{7}$/, 'Código IBGE tem 7 dígitos.'),
 });
 
@@ -205,16 +197,28 @@ export const schemaCriarPedido = z
   })
   .superRefine((p, ctx) => {
     if (p.formaPagamento === 'pago' && p.valorACobrarCentavos !== 0) {
-      ctx.addIssue({ code: 'custom', path: ['valorACobrarCentavos'], message: 'Pedido já pago não tem valor a cobrar.' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['valorACobrarCentavos'],
+        message: 'Pedido já pago não tem valor a cobrar.',
+      });
     }
     if (p.formaPagamento !== 'pago' && p.valorACobrarCentavos === 0) {
       ctx.addIssue({ code: 'custom', path: ['valorACobrarCentavos'], message: 'Informe o valor a cobrar na entrega.' });
     }
     if (p.trocoParaCentavos !== undefined) {
       if (p.formaPagamento !== 'dinheiro') {
-        ctx.addIssue({ code: 'custom', path: ['trocoParaCentavos'], message: 'Troco só vale para pagamento em dinheiro.' });
+        ctx.addIssue({
+          code: 'custom',
+          path: ['trocoParaCentavos'],
+          message: 'Troco só vale para pagamento em dinheiro.',
+        });
       } else if (p.trocoParaCentavos < p.valorACobrarCentavos) {
-        ctx.addIssue({ code: 'custom', path: ['trocoParaCentavos'], message: 'O troco precisa ser para um valor maior que o pedido.' });
+        ctx.addIssue({
+          code: 'custom',
+          path: ['trocoParaCentavos'],
+          message: 'O troco precisa ser para um valor maior que o pedido.',
+        });
       }
     }
   });

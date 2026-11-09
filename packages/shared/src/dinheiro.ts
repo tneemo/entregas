@@ -8,7 +8,10 @@ export function formatarReais(centavos: number): string {
 
 /** Converte o que a pessoa digitou ("12,50", "R$ 1.234,5", "12") em centavos. */
 export function lerReais(texto: string): number | null {
-  const limpo = texto.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
+  const limpo = texto
+    .replace(/[R$\s]/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.');
   if (limpo === '') return 0;
   if (!/^\d+(\.\d{0,2})?$/.test(limpo)) return null;
   return Math.round(Number(limpo) * 100);

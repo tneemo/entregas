@@ -97,10 +97,20 @@ describe('CSRF', () => {
 
     const deFora = await admin.cliente.req('POST', caminho, { papel: 'motoboy' }, { 'sec-fetch-site': 'cross-site' });
     expect(deFora.status).toBe(403);
-    const origemErrada = await admin.cliente.req('POST', caminho, { papel: 'motoboy' }, { origin: 'https://golpe.example' });
+    const origemErrada = await admin.cliente.req(
+      'POST',
+      caminho,
+      { papel: 'motoboy' },
+      { origin: 'https://golpe.example' },
+    );
     expect(origemErrada.status).toBe(403);
 
-    const doPainel = await admin.cliente.req('POST', caminho, { papel: 'motoboy' }, { 'sec-fetch-site': 'same-origin' });
+    const doPainel = await admin.cliente.req(
+      'POST',
+      caminho,
+      { papel: 'motoboy' },
+      { 'sec-fetch-site': 'same-origin' },
+    );
     expect(doPainel.status).toBe(201);
   });
 

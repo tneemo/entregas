@@ -70,8 +70,9 @@ function CodigoEntrega({ pedido, nomeEmpresa }: { pedido: Pedido; nomeEmpresa: s
       <h2 id="titulo-codigo" className="text-xl">
         Código de entrega
       </h2>
-      <p className="font-cond text-5xl font-bold tracking-[0.2em] text-mercosul" aria-label={`Código ${pedido.codigoEntrega.split('').join(' ')}`}>
-        {pedido.codigoEntrega}
+      <p className="font-cond text-5xl font-bold tracking-[0.2em] text-mercosul">
+        <span className="sr-only">{`Código ${pedido.codigoEntrega.split('').join(' ')}`}</span>
+        <span aria-hidden="true">{pedido.codigoEntrega}</span>
       </p>
       <p className="text-sm text-concreto">
         O cliente informa este código ao motoboy na entrega. O motoboy não vê o código no app. Pelo link, o cliente
@@ -275,7 +276,8 @@ export function PedidoDetalhe() {
             </p>
             {p.trocoParaCentavos !== null && (
               <p>
-                Troco para {formatarReais(p.trocoParaCentavos)}: levar {formatarReais(p.trocoParaCentavos - p.valorACobrarCentavos)}.
+                Troco para {formatarReais(p.trocoParaCentavos)}: levar{' '}
+                {formatarReais(p.trocoParaCentavos - p.valorACobrarCentavos)}.
               </p>
             )}
             <p className="text-sm text-concreto">Taxa de entrega: {formatarReais(p.taxaEntregaCentavos)}</p>
@@ -294,14 +296,20 @@ export function PedidoDetalhe() {
               <ul className="flex flex-wrap gap-3">
                 {p.fotos.map((f) => (
                   <li key={f.id}>
-                    <a href={f.url} target="_blank" rel="noreferrer" className="flex flex-col gap-1 text-sm text-concreto">
+                    <a
+                      href={f.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex flex-col gap-1 text-sm text-concreto"
+                    >
                       <img
                         src={f.url}
                         alt={`Foto de ${f.tipo === 'falha' ? 'tentativa de entrega' : f.tipo} às ${horaCurta(f.criadoEm)}`}
                         className="h-32 w-32 rounded border border-linha bg-white object-cover"
                         loading="lazy"
                       />
-                      {f.tipo === 'falha' ? 'Tentativa' : f.tipo === 'coleta' ? 'Coleta' : 'Entrega'}, {horaCurta(f.criadoEm)}
+                      {f.tipo === 'falha' ? 'Tentativa' : f.tipo === 'coleta' ? 'Coleta' : 'Entrega'},{' '}
+                      {horaCurta(f.criadoEm)}
                     </a>
                   </li>
                 ))}

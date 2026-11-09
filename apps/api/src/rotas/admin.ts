@@ -63,7 +63,7 @@ export const rotasAdmin = new Hono<AppEnv>()
     const cidade = await db.select().from(cidades).where(eq(cidades.id, dados.cidadeId)).get();
     if (!cidade) throw camposInvalidos({ cidadeId: ['Cidade não encontrada.'] });
 
-    let empresa;
+    let empresa: typeof empresas.$inferSelect;
     try {
       empresa = await db.insert(empresas).values(dados).returning().get();
     } catch (erro) {

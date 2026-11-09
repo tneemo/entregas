@@ -67,7 +67,9 @@ function useRastreio() {
     } catch {
       // Sem internet: mantém o que já está na tela e tenta de novo depois.
       setCarga((atual) =>
-        atual.tipo === 'ok' ? atual : { tipo: 'erro', status: 0, mensagem: 'Sem conexão. Confira a internet do celular.' },
+        atual.tipo === 'ok'
+          ? atual
+          : { tipo: 'erro', status: 0, mensagem: 'Sem conexão. Confira a internet do celular.' },
       );
     }
   }, []);
@@ -93,7 +95,9 @@ function useRastreio() {
 
     const conectar = () => {
       const protocolo = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const atual = new WebSocket(`${protocolo}//${window.location.host}/api/v1/rastreio/${encodeURIComponent(token)}/ws`);
+      const atual = new WebSocket(
+        `${protocolo}//${window.location.host}/api/v1/rastreio/${encodeURIComponent(token)}/ws`,
+      );
       ws = atual;
       atual.onopen = () => {
         tentativas = 0;
@@ -138,7 +142,8 @@ function Etapas({ etapa, problema, entregue }: { etapa: number; problema: boolea
       {ETAPAS_RASTREIO.map((nome, i) => {
         const feita = i < etapa || entregue;
         const agora = i === etapa && !entregue;
-        const cor = agora && problema ? 'bg-aluguel' : feita || agora ? (entregue ? 'bg-ok' : 'bg-mercosul') : 'bg-linha';
+        const cor =
+          agora && problema ? 'bg-aluguel' : feita || agora ? (entregue ? 'bg-ok' : 'bg-mercosul') : 'bg-linha';
         return (
           <li key={nome} className="flex flex-col gap-1.5">
             <span className={`h-1.5 rounded-full ${cor}`} aria-hidden />
@@ -162,7 +167,15 @@ function Bloco({ titulo, children }: { titulo: string; children: React.ReactNode
   );
 }
 
-function AoVivo({ dados, posicao, conectado }: { dados: RastreioResposta; posicao: Posicao | null; conectado: boolean }) {
+function AoVivo({
+  dados,
+  posicao,
+  conectado,
+}: {
+  dados: RastreioResposta;
+  posicao: Posicao | null;
+  conectado: boolean;
+}) {
   const agora = useAgora();
   const rotulo = dados.motoboy?.primeiroNome ?? 'Entregador';
   return (
@@ -173,7 +186,15 @@ function AoVivo({ dados, posicao, conectado }: { dados: RastreioResposta; posica
       {posicao ? (
         <Suspense fallback={<div className="h-72 rounded-md bg-linha/40" />}>
           <Mapa
-            marcadores={[{ id: 'entregador', latitude: posicao.latitude, longitude: posicao.longitude, rotulo, precisao: posicao.precisao }]}
+            marcadores={[
+              {
+                id: 'entregador',
+                latitude: posicao.latitude,
+                longitude: posicao.longitude,
+                rotulo,
+                precisao: posicao.precisao,
+              },
+            ]}
             seguir
             rotulo={`Posição de ${rotulo} no mapa`}
             className="h-72"
@@ -206,7 +227,9 @@ function Pagina() {
     const invalido = carga.status === 404;
     return (
       <Moldura>
-        <h1 className="text-3xl">{expirado ? 'Este link expirou' : invalido ? 'Link não encontrado' : 'Não deu para carregar'}</h1>
+        <h1 className="text-3xl">
+          {expirado ? 'Este link expirou' : invalido ? 'Link não encontrado' : 'Não deu para carregar'}
+        </h1>
         <p>
           {expirado
             ? `O acompanhamento fica disponível até ${RASTREIO_HORAS_APOS_CONCLUSAO} horas depois da entrega.`
@@ -264,11 +287,9 @@ function Pagina() {
           <h2 id="titulo-codigo" className="text-sm font-medium uppercase tracking-wide text-concreto">
             Código de entrega
           </h2>
-          <p
-            className="font-cond text-5xl font-bold tracking-[0.25em] text-mercosul"
-            aria-label={`Código ${d.codigoEntrega.split('').join(' ')}`}
-          >
-            {d.codigoEntrega}
+          <p className="font-cond text-5xl font-bold tracking-[0.25em] text-mercosul">
+            <span className="sr-only">{`Código ${d.codigoEntrega.split('').join(' ')}`}</span>
+            <span aria-hidden="true">{d.codigoEntrega}</span>
           </p>
           <p className="text-sm">Informe este código ao entregador quando receber. Não passe para mais ninguém.</p>
         </section>

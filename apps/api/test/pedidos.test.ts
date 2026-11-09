@@ -41,9 +41,14 @@ describe('criação de pedidos', () => {
     await novoPedido(eq.admin.cliente, eq.empresa.id, {
       entrega: { nome: 'Bruna Recorrente', telefone, endereco: endereco('Rua Recife', '45', 'Country') },
     });
-    const r = await eq.admin.cliente.get(`/empresas/${eq.empresa.id}/clientes/telefone/${encodeURIComponent(telefone)}`);
+    const r = await eq.admin.cliente.get(
+      `/empresas/${eq.empresa.id}/clientes/telefone/${encodeURIComponent(telefone)}`,
+    );
     expect(r.status).toBe(200);
-    expect(r.corpo).toMatchObject({ nome: 'Bruna Recorrente', endereco: { logradouro: 'Rua Recife', bairro: 'Country' } });
+    expect(r.corpo).toMatchObject({
+      nome: 'Bruna Recorrente',
+      endereco: { logradouro: 'Rua Recife', bairro: 'Country' },
+    });
   });
 
   it('já atribui ao motoboy quando informado', async () => {
@@ -266,9 +271,13 @@ describe('isolamento de pedidos entre empresas', () => {
 
   it('A não atribui motoboy de B nem B atribui motoboy de A', async () => {
     const pedidoA = await novoPedido(a.admin.cliente, a.empresa.id);
-    const r = await acao(a.admin.cliente, a.empresa.id, pedidoA.id, 'atribuir', { motoboyVinculoId: vinculoDe(b.motoboy) });
+    const r = await acao(a.admin.cliente, a.empresa.id, pedidoA.id, 'atribuir', {
+      motoboyVinculoId: vinculoDe(b.motoboy),
+    });
     expect(r.status).toBe(422);
-    const r2 = await acao(b.admin.cliente, b.empresa.id, pedidoB.id, 'atribuir', { motoboyVinculoId: vinculoDe(a.motoboy) });
+    const r2 = await acao(b.admin.cliente, b.empresa.id, pedidoB.id, 'atribuir', {
+      motoboyVinculoId: vinculoDe(a.motoboy),
+    });
     expect(r2.status).toBe(422);
   });
 
@@ -308,8 +317,12 @@ describe('isolamento de pedidos entre empresas', () => {
     await a.admin.cliente.patch(`/empresas/${a.empresa.id}/membros/${vinculoDe(a.motoboy)}`, { status: 'suspenso' });
     expect((await a.motoboy.cliente.get(`/empresas/${a.empresa.id}/pedidos/${pedido.id}`)).status).toBe(404);
     // E não pode mais receber pedidos novos.
-    const r = await acao(a.admin.cliente, a.empresa.id, pedido.id, 'atribuir', { motoboyVinculoId: vinculoDe(a.motoboy) });
+    const r = await acao(a.admin.cliente, a.empresa.id, pedido.id, 'atribuir', {
+      motoboyVinculoId: vinculoDe(a.motoboy),
+    });
     expect(r.status).toBe(422);
-    expect((await acao(a.admin.cliente, a.empresa.id, pedido.id, 'atribuir', { motoboyVinculoId: vinculoDe(extra) })).status).toBe(200);
+    expect(
+      (await acao(a.admin.cliente, a.empresa.id, pedido.id, 'atribuir', { motoboyVinculoId: vinculoDe(extra) })).status,
+    ).toBe(200);
   });
 });

@@ -65,7 +65,14 @@ describe('schemaCriarPedido', () => {
     entrega: {
       nome: 'Ana',
       telefone: '(45) 99999-1111',
-      endereco: { cep: '85810-000', logradouro: 'Av. Brasil', numero: '2000', bairro: 'Centro', cidade: 'Cascavel', uf: 'PR' },
+      endereco: {
+        cep: '85810-000',
+        logradouro: 'Av. Brasil',
+        numero: '2000',
+        bairro: 'Centro',
+        cidade: 'Cascavel',
+        uf: 'PR',
+      },
     },
     formaPagamento: 'dinheiro',
     valorACobrarCentavos: 4500,
@@ -87,7 +94,11 @@ describe('schemaCriarPedido', () => {
 
   it('pedido já pago não cobra nada; os demais precisam de valor', () => {
     expect(schemaCriarPedido.safeParse({ ...base, formaPagamento: 'pago' }).success).toBe(false);
-    expect(schemaCriarPedido.safeParse({ ...base, formaPagamento: 'pago', valorACobrarCentavos: 0 }).success).toBe(true);
-    expect(schemaCriarPedido.safeParse({ ...base, formaPagamento: 'pix', valorACobrarCentavos: 0 }).success).toBe(false);
+    expect(schemaCriarPedido.safeParse({ ...base, formaPagamento: 'pago', valorACobrarCentavos: 0 }).success).toBe(
+      true,
+    );
+    expect(schemaCriarPedido.safeParse({ ...base, formaPagamento: 'pix', valorACobrarCentavos: 0 }).success).toBe(
+      false,
+    );
   });
 });

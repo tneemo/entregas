@@ -72,7 +72,12 @@ function Convidar({ empresaId, nomeEmpresa, meuPapel }: { empresaId: string; nom
   );
 }
 
-function LinhaMembro({ membro, empresaId, souAdmin, souEu }: {
+function LinhaMembro({
+  membro,
+  empresaId,
+  souAdmin,
+  souEu,
+}: {
   membro: MembroResposta;
   empresaId: string;
   souAdmin: boolean;
@@ -118,8 +123,9 @@ function LinhaMembro({ membro, empresaId, souAdmin, souEu }: {
       </td>
       <td className="py-3 pr-4">
         {membro.papel !== 'motoboy' ? (
-          <span className="text-concreto" aria-label="Não se aplica">
-            –
+          <span className="text-concreto">
+            <span aria-hidden="true">–</span>
+            <span className="sr-only">Não se aplica</span>
           </span>
         ) : editavel ? (
           <select
@@ -183,7 +189,9 @@ function ConvitesPendentes({ empresaId, meuPapel }: { empresaId: string; meuPape
         {convites.data.map((c) => (
           <li key={c.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-linha py-3">
             <span className="h-2 w-2 rounded-full bg-sinal" aria-hidden />
-            <span className="font-medium">{c.nomeConvidado || `Convite de ${ROTULOS.papel[c.papel].toLowerCase()}`}</span>
+            <span className="font-medium">
+              {c.nomeConvidado || `Convite de ${ROTULOS.papel[c.papel].toLowerCase()}`}
+            </span>
             <span className="text-sm text-concreto">
               {ROTULOS.papel[c.papel]}, criado por {c.criadoPor}, vale até {dataCurta(c.expiraEm)}
             </span>

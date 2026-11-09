@@ -124,7 +124,7 @@ flowchart LR
 
 ### App do motoboy (Expo)
 - `expo-location` + `expo-task-manager` com **foreground service** para GPS em segundo plano (envio a cada ~15s em rota, ~60s parado).
-- Fila offline: status e posições ficam no aparelho e sobem quando a internet volta (comum em áreas sem sinal).
+- Fila offline: posições ficam no aparelho e sobem quando a internet volta (comum em áreas sem sinal). As ações do pedido (coletar, entregar, falhar) ainda exigem conexão; a fila delas, com chave de idempotência, está na Fase 1.5.
 - Navegação por **deep link** para Google Maps / Waze (sem custo de API).
 - Push de nova entrega via Expo Push (FCM).
 - Distribuição: Google Play (conta de desenvolvedor) ou APK direto na fase piloto.
@@ -245,6 +245,12 @@ entregas/
 ```
 Monorepo com **npm workspaces**; TypeScript em tudo; testes com Vitest (`@cloudflare/vitest-plugin` para a API). O painel é servido pelo mesmo Worker da API (Workers Static Assets), então painel e API ficam na mesma origem.
 
+### Ambientes, CI e monitoramento
+- **Três ambientes** no `wrangler.jsonc`: desenvolvimento (local), **homologação** (`entregas-homologacao`, com D1 e R2 próprios) e **produção**. Nada de teste com dado real.
+- **GitHub Actions**: todo PR e push passa por lint, tipos, testes e build (`verificar.yml`). Push na `main` publica sozinho na homologação; produção é um botão manual (`producao.yml`), com aprovação opcional pelo ambiente `producao` do GitHub. Publicar = migrations do D1 → deploy do Worker → conferência de `/api/v1/saude`. Dependabot semanal (o SDK do Expo fica de fora: atualiza com `expo install --fix`).
+- **Lint e formatação com Biome** (`biome.json`), com a regra de isolamento: em `apps/api/src`, tabelas com `empresa_id` só podem ser importadas por `src/dados` e `src/db`. LF em todos os arquivos (`.gitattributes`), igual no Windows e no CI.
+- **Sentry** (opcional, ligado por DSN) na API, no Durable Object, no cron, no painel e no app (inclui travamentos nativos). Só erros, sem rastreamento de desempenho por enquanto. LGPD: sem corpo de requisição, cookies, usuário, IP, captura de tela nem tokens de rastreio/convite da URL (`packages/shared/src/privacidade.ts`, com testes). A página pública de rastreio fica sem Sentry para continuar leve.
+
 ---
 
 ## 10. Roteiro
@@ -253,6 +259,7 @@ Monorepo com **npm workspaces**; TypeScript em tudo; testes com Vitest (`@cloudf
 |---|---|
 | **0 — Fundação** ✅ | Monorepo, Worker + D1, auth, camada multi-tenant com testes de isolamento, cadastro de empresas/usuários/vínculos, convites, painel (login, empresas, equipe, aceite de convite) |
 | **1 — Núcleo** | **Parte 1 ✅** pedidos pelo painel, ciclo de status com histórico, despacho manual, código de entrega (bloqueia após 5 erros), cadastro de clientes pelo telefone, endereço da empresa como coleta padrão, CEP via ViaCEP. **Parte 2 ✅** app Android do motoboy em Expo (login, turno único por pessoa, GPS em segundo plano com aviso fixo e fila offline, entregas, código, foto no R2), retenção de GPS de 90 dias por cron. Pendente: teste em aparelho real e notificação push. **Parte 3 ✅** Durable Object `CentralEmpresa` com WebSocket Hibernation, mapa ao vivo no painel (posições e turnos em tempo real, fila de pedidos atualizada sozinha), link público de rastreio `/r/<token>` (status, código, mapa do entregador só em rota, expira 48 h após concluir) e link + código no botão do WhatsApp. Mapa provisório em Leaflet + OpenStreetMap até existir a chave do Google Maps. **Parte 4 ✅** regras de entrega por empresa: foto obrigatória na falha e na entrega sem código (e, se a empresa quiser, em toda entrega), entrega sem código com foto, prazo de aceite com volta automática à fila |
+| **1.5 — Pronto para piloto** | **Parte 1 ✅** fundação de engenharia: Biome (lint + formatação + regra de isolamento), CI/CD no GitHub Actions, homologação com banco e fotos próprios, Sentry na API, painel e app, tela de erro no lugar de página em branco. **A seguir:** coordenadas em toda parada (geocodificação), notificação push para o motoboy, fila offline das ações com idempotência, recuperação de senha (com domínio e e-mail transacional), alerta de GPS parado e orientação de bateria nos celulares que matam o app, registro do pacote no Android Developer Console |
 | **2 — Dinheiro** | Cobrança na entrega, acerto, remuneração, frete por km, comissão + fatura mensal |
 | **3 — Entradas** | Link público de pedido, portal do cliente contratante, API pública + webhooks |
 | **4 — Integrações** | iFood (requer cadastro e homologação no portal de desenvolvedores do iFood), PDVs, despacho automático, roteirização multi-paradas, WhatsApp API oficial, Pix dinâmico |
@@ -267,7 +274,9 @@ Monorepo com **npm workspaces**; TypeScript em tudo; testes com Vitest (`@cloudf
 - [ ] Nome da plataforma e domínio.
 - [x] Conta Cloudflare: API e painel publicados em `entregas.joaopedropavanete.workers.dev` (ambiente `producao`). Falta assinar o Workers Paid antes do piloto (o login gasta ~25 ms de CPU).
 - [ ] Conta Google Cloud com faturamento para as APIs de mapas.
-- [ ] Conta de desenvolvedor Google Play (ou piloto com APK).
+- [ ] Conta de desenvolvedor Google Play (ou piloto com APK). Desde 30/09/2026 o Brasil exige verificação de desenvolvedor: registrar o pacote `br.com.entregas.motoboy` no Android Developer Console mesmo distribuindo APK.
+- [ ] Token da Cloudflare no GitHub (`CLOUDFLARE_API_TOKEN`) para o CI publicar; ver README.
+- [ ] Conta no Sentry (plano gratuito serve no piloto) e os DSNs nos três lugares; ver README.
 - [ ] Contador: emissão de NFS-e sobre a comissão.
 - [ ] Advogado: termos de uso, política de privacidade, contrato de tratamento de dados com as empresas.
 - [x] Ambiente de desenvolvimento: Node.js e git instalados.

@@ -1,8 +1,7 @@
 import { createMiddleware } from 'hono/factory';
-import { and, eq } from 'drizzle-orm';
 import type { Papel } from '@entregas/shared';
 import type { AppEnv } from '../tipos.ts';
-import { empresas, vinculos } from '../db/schema.ts';
+import { vinculoNaEmpresa } from '../dados/usuarios.ts';
 import { naoAutenticado, naoEncontrado, proibido } from '../erros.ts';
 
 /**
@@ -18,12 +17,7 @@ export function exigirEmpresa(...papeis: Papel[]) {
     const empresaId = c.req.param('empresaId');
     if (!empresaId) throw naoEncontrado('Empresa não encontrada.');
 
-    const linha = await c.var.db
-      .select({ vinculo: vinculos, statusEmpresa: empresas.status })
-      .from(vinculos)
-      .innerJoin(empresas, eq(empresas.id, vinculos.empresaId))
-      .where(and(eq(vinculos.empresaId, empresaId), eq(vinculos.usuarioId, usuario.id)))
-      .get();
+    const linha = await vinculoNaEmpresa(c.var.db, empresaId, usuario.id);
 
     if (!linha || linha.vinculo.status !== 'ativo' || linha.statusEmpresa !== 'ativa') {
       throw naoEncontrado('Empresa não encontrada.');

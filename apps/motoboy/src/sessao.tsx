@@ -36,6 +36,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     }
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: confere a sessão salva só ao abrir o app.
   useEffect(() => {
     recarregar().finally(() => setCarregando(false));
   }, []);

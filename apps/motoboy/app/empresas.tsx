@@ -38,7 +38,11 @@ export default function Empresas() {
         ))
       )}
       <View style={{ marginTop: espaco.g }}>
-        <Botao titulo="Sair da conta" variante="secundario" aoTocar={() => sair().then(() => router.replace('/entrar'))} />
+        <Botao
+          titulo="Sair da conta"
+          variante="secundario"
+          aoTocar={() => sair().then(() => router.replace('/entrar'))}
+        />
       </View>
     </ScrollView>
   );

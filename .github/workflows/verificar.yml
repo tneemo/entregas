@@ -1,0 +1,29 @@
+# Verificação completa, chamada pelo CI e antes de publicar em produção.
+name: Verificar
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Lint, tipos, testes e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/preparar
+
+      - name: Lint e formatação
+        run: npx biome ci .
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Testes
+        run: npm test
+
+      - name: Build do painel
+        run: npm run build

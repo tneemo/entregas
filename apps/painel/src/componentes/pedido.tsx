@@ -27,13 +27,17 @@ const COR_STATUS: Record<StatusPedido, string> = {
 
 export function SeloStatus({ status }: { status: StatusPedido }) {
   return (
-    <span className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-sm font-medium ring-1 ${COR_STATUS[status]}`}>
+    <span
+      className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-sm font-medium ring-1 ${COR_STATUS[status]}`}
+    >
       {ROTULOS_STATUS[status]}
     </span>
   );
 }
 
-export function enderecoEmLinha(e: Pick<EnderecoResposta, 'logradouro' | 'numero' | 'bairro'> & { complemento?: string }) {
+export function enderecoEmLinha(
+  e: Pick<EnderecoResposta, 'logradouro' | 'numero' | 'bairro'> & { complemento?: string },
+) {
   return `${e.logradouro}, ${e.numero}${e.complemento ? ` (${e.complemento})` : ''}, ${e.bairro}`;
 }
 
@@ -100,7 +104,13 @@ export function enderecoVazio(cidade = '', uf = ''): EnderecoForm {
 }
 
 export function paraEnderecoForm(e: EnderecoResposta): EnderecoForm {
-  return { ...enderecoVazio(), ...e, cep: e.cep ?? '', complemento: e.complemento ?? '', referencia: e.referencia ?? '' };
+  return {
+    ...enderecoVazio(),
+    ...e,
+    cep: e.cep ?? '',
+    complemento: e.complemento ?? '',
+    referencia: e.referencia ?? '',
+  };
 }
 
 /**
@@ -168,13 +178,24 @@ export function EnderecoCampos({
         />
       </div>
       <div className="sm:col-span-4">
-        <Campo rotulo="Rua" value={valor.logradouro} onChange={mudar('logradouro')} erro={erroDe('logradouro')} required />
+        <Campo
+          rotulo="Rua"
+          value={valor.logradouro}
+          onChange={mudar('logradouro')}
+          erro={erroDe('logradouro')}
+          required
+        />
       </div>
       <div className="sm:col-span-2">
         <Campo rotulo="Número" value={valor.numero} onChange={mudar('numero')} erro={erroDe('numero')} required />
       </div>
       <div className="sm:col-span-4">
-        <Campo rotulo="Complemento (opcional)" value={valor.complemento} onChange={mudar('complemento')} erro={erroDe('complemento')} />
+        <Campo
+          rotulo="Complemento (opcional)"
+          value={valor.complemento}
+          onChange={mudar('complemento')}
+          erro={erroDe('complemento')}
+        />
       </div>
       <div className="sm:col-span-3">
         <Campo rotulo="Bairro" value={valor.bairro} onChange={mudar('bairro')} erro={erroDe('bairro')} required />

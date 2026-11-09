@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { ErroResposta } from '@entregas/shared';
 import { violouUnicidade } from './db/index.ts';
+import { registrarErro } from './monitoramento.ts';
 
 export class ErroApi extends Error {
   constructor(
@@ -15,14 +16,11 @@ export class ErroApi extends Error {
   }
 }
 
-export const naoAutenticado = () =>
-  new ErroApi(401, 'nao_autenticado', 'Entre com sua conta para continuar.');
+export const naoAutenticado = () => new ErroApi(401, 'nao_autenticado', 'Entre com sua conta para continuar.');
 
-export const proibido = (mensagem = 'Você não tem permissão para esta ação.') =>
-  new ErroApi(403, 'proibido', mensagem);
+export const proibido = (mensagem = 'Você não tem permissão para esta ação.') => new ErroApi(403, 'proibido', mensagem);
 
-export const naoEncontrado = (mensagem = 'Não encontrado.') =>
-  new ErroApi(404, 'nao_encontrado', mensagem);
+export const naoEncontrado = (mensagem = 'Não encontrado.') => new ErroApi(404, 'nao_encontrado', mensagem);
 
 export const camposInvalidos = (campos: Record<string, string[]>, mensagem = 'Confira os dados informados.') =>
   new ErroApi(422, 'validacao', mensagem, campos);
@@ -47,8 +45,6 @@ export function tratarErro(erro: Error, c: Context) {
     );
   }
   console.error('erro não tratado', erro);
-  return c.json<ErroResposta>(
-    { erro: { codigo: 'erro_interno', mensagem: 'Erro inesperado. Tente novamente.' } },
-    500,
-  );
+  registrarErro(erro);
+  return c.json<ErroResposta>({ erro: { codigo: 'erro_interno', mensagem: 'Erro inesperado. Tente novamente.' } }, 500);
 }

@@ -1,0 +1,116 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/worker-configuration.d.ts",
+      "!**/migrations/meta",
+      "!**/package-lock.json",
+      "!**/dist",
+      "!**/.expo",
+      "!**/.wrangler"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "arrowParentheses": "always"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "off"
+      }
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        "noNonNullAssertion": "off"
+      },
+      "complexity": {
+        "useOptionalChain": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.md"],
+      "formatter": {
+        "enabled": false
+      }
+    },
+    {
+      "includes": ["apps/api/src/**", "!apps/api/src/dados/**", "!apps/api/src/db/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/db/schema*"],
+                    "importNamePattern": "(cidades|empresas|usuarios|sessoes|falhasLogin)",
+                    "invertImportNamePattern": true,
+                    "message": "Tabelas com empresa_id só são acessadas pelos escopos em src/dados (isolamento entre empresas). Crie ou use uma função lá."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/test/**", "**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/motoboy/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noReactNativeRawText": {
+              "level": "error",
+              "options": {
+                "skip": ["Aviso"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -80,7 +80,9 @@ describe('foto na falha', () => {
   it('a central registra a falha sem foto (o motoboy pode ter ligado)', async () => {
     const p = await emRota(eq);
     expect((await verPelaCentral(eq, p.id)).corpo.fotoObrigatoria).toEqual([]);
-    const r = await acao(eq.despachante.cliente, eq.empresa.id, p.id, 'falhar', { motivo: 'Motoboy ligou: casa fechada' });
+    const r = await acao(eq.despachante.cliente, eq.empresa.id, p.id, 'falhar', {
+      motivo: 'Motoboy ligou: casa fechada',
+    });
     expect(r.corpo.status).toBe('falhou');
   });
 });
@@ -104,7 +106,11 @@ describe('foto na entrega com código', () => {
     expect(regra.corpo.fotoEntregaObrigatoria).toBe(true);
 
     const p = await emRota(eq);
-    expect((await verPeloMotoboy(eq, p.id)).corpo.fotoObrigatoria).toEqual(['entregar', 'entregar_sem_codigo', 'falhar']);
+    expect((await verPeloMotoboy(eq, p.id)).corpo.fotoObrigatoria).toEqual([
+      'entregar',
+      'entregar_sem_codigo',
+      'falhar',
+    ]);
 
     const semFoto = await acao(eq.motoboy.cliente, E, p.id, 'entregar', { codigo: p.codigoEntrega });
     expect(semFoto.corpo.erro.codigo).toBe('foto_obrigatoria');
@@ -247,7 +253,9 @@ describe('prazo de aceite', () => {
     const trocado = await atribuido();
     const primeiroPrazo = new Date(trocado.aceiteAte!);
     await esperar(20);
-    const reatribuido = await acao(eq.admin.cliente, E, trocado.id, 'atribuir', { motoboyVinculoId: vinculoDe(eq.motoboy) });
+    const reatribuido = await acao(eq.admin.cliente, E, trocado.id, 'atribuir', {
+      motoboyVinculoId: vinculoDe(eq.motoboy),
+    });
     expect(Date.parse(reatribuido.corpo.aceiteAte)).toBeGreaterThan(primeiroPrazo.getTime());
 
     // O prazo antigo não vale mais.
@@ -280,9 +288,16 @@ describe('cron do prazo de aceite', () => {
     await ws.conexao.esperar((m) => m.tipo === 'motoboys');
 
     // Prazo vencido sem esperar 2 minutos de verdade.
-    await criarDb(env.DB).update(pedidos).set({ aceiteAte: new Date(Date.now() - 1_000) }).where(igual(pedidos.id, p.id));
+    await criarDb(env.DB)
+      .update(pedidos)
+      .set({ aceiteAte: new Date(Date.now() - 1_000) })
+      .where(igual(pedidos.id, p.id));
     const voltaram = await vencerPrazosDeAceite(env);
     expect(voltaram).toContainEqual({ empresaId: E, pedidoId: p.id });
-    expect(await ws.conexao.esperar((m) => m.tipo === 'pedido')).toEqual({ tipo: 'pedido', pedidoId: p.id, status: 'pendente' });
+    expect(await ws.conexao.esperar((m) => m.tipo === 'pedido')).toEqual({
+      tipo: 'pedido',
+      pedidoId: p.id,
+      status: 'pendente',
+    });
   });
 });

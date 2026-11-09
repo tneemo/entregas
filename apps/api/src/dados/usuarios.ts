@@ -13,7 +13,12 @@ export async function candidatosLogin(db: Db, login: string) {
   if (l.cpf) condicoes.push(eq(usuarios.cpf, l.cpf));
   if (l.telefone) condicoes.push(eq(usuarios.telefone, l.telefone));
   if (condicoes.length === 0) return [];
-  return db.select().from(usuarios).where(or(...condicoes)).limit(2).all();
+  return db
+    .select()
+    .from(usuarios)
+    .where(or(...condicoes))
+    .limit(2)
+    .all();
 }
 
 const ROTULO_CAMPO = { email: 'e-mail', telefone: 'telefone', cpf: 'CPF' } as const;
@@ -30,12 +35,7 @@ export async function garantirDadosUnicos(
   const existentes = await db
     .select({ email: usuarios.email, telefone: usuarios.telefone, cpf: usuarios.cpf })
     .from(usuarios)
-    .where(
-      and(
-        or(...campos.map((k) => eq(usuarios[k], dados[k]!))),
-        exceto ? ne(usuarios.id, exceto) : undefined,
-      ),
-    )
+    .where(and(or(...campos.map((k) => eq(usuarios[k], dados[k]!))), exceto ? ne(usuarios.id, exceto) : undefined))
     .all();
   if (existentes.length === 0) return;
 
@@ -63,13 +63,7 @@ export async function montarEu(db: Db, usuarioId: string): Promise<EuResposta> {
     })
     .from(vinculos)
     .innerJoin(empresas, eq(empresas.id, vinculos.empresaId))
-    .where(
-      and(
-        eq(vinculos.usuarioId, usuarioId),
-        eq(vinculos.status, 'ativo'),
-        eq(empresas.status, 'ativa'),
-      ),
-    )
+    .where(and(eq(vinculos.usuarioId, usuarioId), eq(vinculos.status, 'ativo'), eq(empresas.status, 'ativa')))
     .orderBy(empresas.nomeFantasia)
     .all();
 
@@ -81,4 +75,17 @@ export async function montarEu(db: Db, usuarioId: string): Promise<EuResposta> {
       empresa: { id: l.empresaId, nomeFantasia: l.nomeFantasia, tipo: l.tipo },
     })),
   };
+}
+
+/**
+ * Vínculo do usuário na empresa, com o status da empresa. Usado pela porta de entrada
+ * das rotas /empresas/:empresaId (middleware/empresa.ts), antes de existir o contexto.
+ */
+export async function vinculoNaEmpresa(db: Db, empresaId: string, usuarioId: string) {
+  return db
+    .select({ vinculo: vinculos, statusEmpresa: empresas.status })
+    .from(vinculos)
+    .innerJoin(empresas, eq(empresas.id, vinculos.empresaId))
+    .where(and(eq(vinculos.empresaId, empresaId), eq(vinculos.usuarioId, usuarioId)))
+    .get();
 }

@@ -2,12 +2,7 @@ import { useEffect, useState } from 'react';
 import { Linking, Platform, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Redirect, Stack, router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ROTULOS_PAGAMENTO,
-  formatarReais,
-  type PedidoResumo,
-  type TurnoResposta,
-} from '@entregas/shared';
+import { ROTULOS_PAGAMENTO, formatarReais, type PedidoResumo, type TurnoResposta } from '@entregas/shared';
 import { api } from '../../src/api.ts';
 import { Aviso, Botao, Placa, Secao, SeloStatus } from '../../src/componentes.tsx';
 import {
@@ -155,7 +150,9 @@ export default function Turno() {
         <Secao titulo="Turno">
           {outra ? (
             <>
-              <Aviso tipo="info">Você está em turno na {outra.nomeFantasia}. Encerre aquele turno para rodar aqui.</Aviso>
+              <Aviso tipo="info">
+                Você está em turno na {outra.nomeFantasia}. Encerre aquele turno para rodar aqui.
+              </Aviso>
               <Botao titulo={`Ir para ${outra.nomeFantasia}`} aoTocar={() => router.replace(`/${outra.empresaId}`)} />
             </>
           ) : emTurno ? (
@@ -180,7 +177,12 @@ export default function Turno() {
                 para a central acompanhar as entregas. Ao encerrar o turno, o envio para.
               </Text>
               {iniciar.error && <Aviso>{iniciar.error.message}</Aviso>}
-              <Botao titulo="Começar turno" variante="sucesso" carregando={iniciar.isPending} aoTocar={() => iniciar.mutate()} />
+              <Botao
+                titulo="Começar turno"
+                variante="sucesso"
+                carregando={iniciar.isPending}
+                aoTocar={() => iniciar.mutate()}
+              />
             </>
           )}
         </Secao>

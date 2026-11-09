@@ -146,12 +146,11 @@ describe('posições de GPS', () => {
   it('ação feita pelo app guarda a posição no histórico', async () => {
     const E = eq1.empresa.id;
     const p = await novoPedido(eq1.admin.cliente, E, { motoboyVinculoId: vinculoDe(eq1.motoboy) });
-    await eq1.motoboy.cliente.post(`/empresas/${E}/pedidos/${p.id}/acoes/aceitar`, { latitude: -24.95, longitude: -53.45 });
-    const evento = await criarDb(env.DB)
-      .select()
-      .from(eventosPedido)
-      .where(eq(eventosPedido.pedidoId, p.id))
-      .all();
+    await eq1.motoboy.cliente.post(`/empresas/${E}/pedidos/${p.id}/acoes/aceitar`, {
+      latitude: -24.95,
+      longitude: -53.45,
+    });
+    const evento = await criarDb(env.DB).select().from(eventosPedido).where(eq(eventosPedido.pedidoId, p.id)).all();
     expect(evento.find((e) => e.acao === 'aceitar')).toMatchObject({ latitude: -24.95, longitude: -53.45 });
   });
 });
@@ -210,7 +209,11 @@ describe('CORS do app na web (desenvolvimento)', () => {
     const preflight = (origem: string) =>
       exports.default.fetch('https://entregas.teste/api/v1/auth/entrar', {
         method: 'OPTIONS',
-        headers: { origin: origem, 'access-control-request-method': 'POST', 'access-control-request-headers': 'content-type' },
+        headers: {
+          origin: origem,
+          'access-control-request-method': 'POST',
+          'access-control-request-headers': 'content-type',
+        },
       });
     const permitido = await preflight('http://localhost:8081');
     expect(permitido.headers.get('access-control-allow-origin')).toBe('http://localhost:8081');

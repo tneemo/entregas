@@ -56,7 +56,12 @@ export default function Entrar() {
           onSubmitEditing={enviar}
         />
         {erro ? <Aviso>{erro}</Aviso> : null}
-        <Botao titulo={enviando ? 'Entrando…' : 'Entrar'} aoTocar={enviar} carregando={enviando} desativado={!login || !senha} />
+        <Botao
+          titulo={enviando ? 'Entrando…' : 'Entrar'}
+          aoTocar={enviar}
+          carregando={enviando}
+          desativado={!login || !senha}
+        />
         <Text style={texto.apoio}>Ainda não tem acesso? Peça o link de convite para a empresa.</Text>
       </ScrollView>
     </KeyboardAvoidingView>

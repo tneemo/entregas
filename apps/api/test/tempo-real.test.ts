@@ -4,7 +4,14 @@ import { eq } from 'drizzle-orm';
 import type { MensagemCentral, PedidoDetalhe, RastreioResposta } from '@entregas/shared';
 import { criarDb } from '../src/db/index.ts';
 import { pedidos } from '../src/db/schema.ts';
-import { Cliente, Conexao, aceitarComContaNova, empresaComEquipe, novoPedido, novoSuperAdmin } from './ajudantes.ts';
+import {
+  Cliente,
+  type Conexao,
+  aceitarComContaNova,
+  empresaComEquipe,
+  novoPedido,
+  novoSuperAdmin,
+} from './ajudantes.ts';
 
 type Equipe = Awaited<ReturnType<typeof empresaComEquipe>>;
 const vinculoDe = (p: Equipe['motoboy']) => p.eu.vinculos[0].vinculoId as string;
@@ -122,7 +129,11 @@ describe('mapa ao vivo: posições e turnos', () => {
     const A = a.empresa.id;
     const painel = await abrir(a.despachante.cliente, `/empresas/${A}/central/ws`);
     const p = await novoPedido(a.admin.cliente, A);
-    expect(await painel.esperar((m) => m.tipo === 'pedido')).toEqual({ tipo: 'pedido', pedidoId: p.id, status: 'pendente' });
+    expect(await painel.esperar((m) => m.tipo === 'pedido')).toEqual({
+      tipo: 'pedido',
+      pedidoId: p.id,
+      status: 'pendente',
+    });
 
     await a.despachante.cliente.post(`/empresas/${A}/pedidos/${p.id}/acoes/atribuir`, {
       motoboyVinculoId: vinculoDe(a.motoboy),
@@ -250,7 +261,13 @@ describe('rastreio público', () => {
 
     await enviar(a.motoboy.cliente, -24.952);
     const nova = await ws.esperar((m) => m.tipo === 'posicao');
-    expect(nova).toEqual({ tipo: 'posicao', latitude: -24.952, longitude: -53.4552, precisao: 8, registradoEm: expect.any(String) });
+    expect(nova).toEqual({
+      tipo: 'posicao',
+      latitude: -24.952,
+      longitude: -53.4552,
+      precisao: 8,
+      registradoEm: expect.any(String),
+    });
     expect(Object.keys(nova)).not.toContain('vinculoId');
 
     await acao(a.motoboy.cliente, p, 'entregar', { codigo: p.codigoEntrega });

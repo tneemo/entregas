@@ -10,9 +10,13 @@
     "dev": "concurrently -k -n api,painel -c blue,green \"npm run dev -w @entregas/api\" \"npm run dev -w @entregas/painel\"",
     "build": "npm run build -w @entregas/painel",
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "biome check .",
+    "lint:corrigir": "biome check --write .",
+    "verificar": "npm run lint && npm run typecheck && npm test"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.6",
     "concurrently": "^9.2.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -25,5 +29,10 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "allowScripts": {
+    "@sentry/cli": true,
+    "esbuild": true,
+    "workerd": true
   }
 }

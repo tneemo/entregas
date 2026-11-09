@@ -95,13 +95,26 @@ export function NovoPedido() {
 
   function enviar(e: FormEvent) {
     e.preventDefault();
-    const centavos = { valor: forma === 'pago' ? 0 : lerReais(valor), troco: troco ? lerReais(troco) : undefined, taxa: lerReais(taxa) };
-    const invalidos = Object.entries({ valorACobrarCentavos: centavos.valor, trocoParaCentavos: centavos.troco, taxaEntregaCentavos: centavos.taxa })
+    const centavos = {
+      valor: forma === 'pago' ? 0 : lerReais(valor),
+      troco: troco ? lerReais(troco) : undefined,
+      taxa: lerReais(taxa),
+    };
+    const invalidos = Object.entries({
+      valorACobrarCentavos: centavos.valor,
+      trocoParaCentavos: centavos.troco,
+      taxaEntregaCentavos: centavos.taxa,
+    })
       .filter(([, v]) => v === null)
       .map(([k]) => k);
     if (invalidos.length > 0) {
       setErroLocal(
-        new ErroDaApi(422, 'validacao', 'Confira os valores em reais.', Object.fromEntries(invalidos.map((k) => [k, ['Valor inválido. Use o formato 12,50.']]))),
+        new ErroDaApi(
+          422,
+          'validacao',
+          'Confira os valores em reais.',
+          Object.fromEntries(invalidos.map((k) => [k, ['Valor inválido. Use o formato 12,50.']])),
+        ),
       );
       return;
     }
@@ -145,7 +158,13 @@ export function NovoPedido() {
               erro={erroDoCampo(erro, 'entrega.telefone')}
               required
             />
-            <Campo rotulo="Nome do cliente" value={nome} onChange={(e) => setNome(e.target.value)} erro={erroDoCampo(erro, 'entrega.nome')} required />
+            <Campo
+              rotulo="Nome do cliente"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              erro={erroDoCampo(erro, 'entrega.nome')}
+              required
+            />
           </div>
           <EnderecoCampos valor={entrega} aoMudar={setEntrega} erro={erro} prefixo="entrega.endereco" />
         </Secao>
@@ -172,7 +191,11 @@ export function NovoPedido() {
                 </p>
               )}
               <div className="grid gap-4 sm:grid-cols-2">
-                <Campo rotulo="Nome de quem entrega o pacote (opcional)" value={coletaNome} onChange={(e) => setColetaNome(e.target.value)} />
+                <Campo
+                  rotulo="Nome de quem entrega o pacote (opcional)"
+                  value={coletaNome}
+                  onChange={(e) => setColetaNome(e.target.value)}
+                />
                 <Campo
                   rotulo="Telefone na coleta (opcional)"
                   type="tel"
@@ -229,7 +252,12 @@ export function NovoPedido() {
         </Secao>
 
         <Secao titulo="Despacho">
-          <Selecao rotulo="Motoboy (opcional)" value={motoboy} onChange={(e) => setMotoboy(e.target.value)} erro={erroDoCampo(erro, 'motoboyVinculoId')}>
+          <Selecao
+            rotulo="Motoboy (opcional)"
+            value={motoboy}
+            onChange={(e) => setMotoboy(e.target.value)}
+            erro={erroDoCampo(erro, 'motoboyVinculoId')}
+          >
             <option value="">Deixar aguardando motoboy</option>
             {motoboys.data?.map((m) => (
               <option key={m.vinculoId} value={m.vinculoId}>

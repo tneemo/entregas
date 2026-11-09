@@ -1,0 +1,23 @@
+# Publicação em produção: à mão, pelo botão "Run workflow" em Actions → Produção.
+# Só a partir da main e depois de passar de novo pela verificação.
+# Para exigir aprovação, configure revisores no ambiente "producao" (Settings → Environments).
+name: Produção
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/verificar.yml
+
+  producao:
+    name: Publicar em produção
+    needs: verificar
+    uses: ./.github/workflows/publicar.yml
+    with:
+      ambiente: producao
+    secrets: inherit
