@@ -6,6 +6,8 @@ import { criarDb } from './db/index.ts';
 import { tratarErro } from './erros.ts';
 import { protegerCsrf } from './middleware/csrf.ts';
 import { carregarSessao } from './middleware/sessao.ts';
+import { idempotencia } from './middleware/idempotencia.ts';
+import { observabilidade } from './middleware/observabilidade.ts';
 import { rotasSetup } from './rotas/setup.ts';
 import { rotasAuth } from './rotas/auth.ts';
 import { rotasAdmin } from './rotas/admin.ts';
@@ -25,6 +27,7 @@ const app = new Hono<AppEnv>().basePath('/api/v1');
 // Sem credenciais: essas chamadas usam Bearer, nunca o cookie do painel.
 // WebSocket não usa CORS (a origem é conferida em protegerCsrf), e mexer nos
 // cabeçalhos de uma resposta 101 depois de pronta quebra a conexão.
+app.use(observabilidade);
 app.use(async (c, next) => {
   const origens = (c.env.ORIGENS_APP ?? '')
     .split(',')
@@ -33,7 +36,8 @@ app.use(async (c, next) => {
   if (origens.length === 0 || c.req.header('upgrade')) return next();
   return cors({
     origin: origens,
-    allowHeaders: ['authorization', 'content-type'],
+    allowHeaders: ['authorization', 'content-type', 'idempotency-key'],
+    exposeHeaders: ['idempotent-replayed', 'x-request-id'],
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE'],
     maxAge: 600,
   })(c, next);
@@ -44,6 +48,7 @@ app.use(async (c, next) => {
 });
 app.use(protegerCsrf);
 app.use(carregarSessao);
+app.use(idempotencia);
 
 app.get('/saude', (c) => c.json({ ok: true }));
 app.route('/setup', rotasSetup);
@@ -72,6 +77,10 @@ async function paginaRastreio(request: Request, env: Env) {
   const resposta = new Response(pagina.body, pagina);
   resposta.headers.set('x-robots-tag', 'noindex, nofollow');
   resposta.headers.set('cache-control', 'no-cache');
+  // O token está na URL: não vaza para outros sites nem deixa a página ser embutida.
+  resposta.headers.set('referrer-policy', 'no-referrer');
+  resposta.headers.set('x-content-type-options', 'nosniff');
+  resposta.headers.set('x-frame-options', 'DENY');
   return resposta;
 }
 

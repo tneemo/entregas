@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0B3D91" />
+    <script>
+      // Antes de pintar: tema escolhido no painel, ou o do sistema.
+      (() => {
+        var salvo = null;
+        try {
+          salvo = localStorage.getItem('entregas:tema');
+        } catch {
+          // sem acesso ao armazenamento: segue o tema do sistema
+        }
+        var escuro = salvo ? salvo === 'escuro' : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.dataset.tema = escuro ? 'escuro' : 'claro';
+      })();
+    </script>
     <title>Entregas — Painel</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

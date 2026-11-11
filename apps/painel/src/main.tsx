@@ -16,6 +16,8 @@ import { Pedidos } from './telas/Pedidos.tsx';
 import { NovoPedido } from './telas/NovoPedido.tsx';
 import { PedidoDetalhe } from './telas/PedidoDetalhe.tsx';
 import { DadosEmpresa } from './telas/DadosEmpresa.tsx';
+import { VisaoGeral } from './telas/VisaoGeral.tsx';
+import './tema.ts';
 import { TelaPublica } from './telas/Entrar.tsx';
 
 iniciarMonitoramento();
@@ -74,6 +76,7 @@ createRoot(document.getElementById('raiz')!).render(
                   </Suspense>
                 }
               />
+              <Route path="visao-geral" element={<VisaoGeral />} />
               <Route path="equipe" element={<Equipe />} />
               <Route path="empresa" element={<DadosEmpresa />} />
             </Route>

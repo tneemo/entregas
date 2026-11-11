@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -6,12 +6,14 @@ import {
   ROTULOS_PAGAMENTO,
   lerReais,
   normalizarTelefone,
+  sugerirMotoboys,
   type ClienteResposta,
   type DadosCriarPedido,
   type FormaPagamento,
   type PedidoDetalhe,
 } from '@entregas/shared';
-import { api, ErroDaApi } from '../api.ts';
+import { api, ErroDaApi, novaChave } from '../api.ts';
+import { silenciarAviso, useAoVivo } from '../tempo-real.ts';
 import { AreaTexto, AvisoErro, Botao, Campo, Selecao, erroDoCampo } from '../componentes/ui.tsx';
 import {
   EnderecoCampos,
@@ -39,6 +41,10 @@ export function NovoPedido() {
   const consultas = useQueryClient();
   const empresa = useDadosEmpresa(empresaId);
   const motoboys = useMotoboys(empresaId);
+  const aoVivo = useAoVivo(empresaId);
+  // Uma chave por pedido digitado: clicar duas vezes ou repetir depois de uma queda de
+  // internet não cria o mesmo pedido de novo.
+  const chave = useRef(novaChave());
 
   const [telefone, setTelefone] = useState('');
   const [nome, setNome] = useState('');
@@ -84,9 +90,12 @@ export function NovoPedido() {
   }
 
   const criar = useMutation({
-    mutationFn: (corpo: DadosCriarPedido) =>
-      api<PedidoDetalhe>(`/empresas/${empresaId}/pedidos`, { metodo: 'POST', corpo }),
+    mutationFn: (corpo: DadosCriarPedido) => {
+      silenciarAviso('novo');
+      return api<PedidoDetalhe>(`/empresas/${empresaId}/pedidos`, { metodo: 'POST', corpo, chave: chave.current });
+    },
     onSuccess: (pedido) => {
+      chave.current = novaChave();
       consultas.invalidateQueries({ queryKey: ['pedidos', empresaId] });
       consultas.invalidateQueries({ queryKey: ['motoboys', empresaId] });
       navegar(`/e/${empresaId}/pedidos/${pedido.id}`);
@@ -134,6 +143,13 @@ export function NovoPedido() {
   }
 
   const erro = erroLocal ?? criar.error;
+
+  // Quem está mais perto do ponto de coleta e com menos entregas na mão.
+  const pontoColeta = (coletaNoProprioEndereco ? enderecoEmpresa?.localizacao : coleta.localizacao) ?? null;
+  const sugestao = useMemo(
+    () => (motoboys.data ? sugerirMotoboys(pontoColeta, motoboys.data, aoVivo.motoboys)[0] : undefined),
+    [motoboys.data, aoVivo.motoboys, pontoColeta],
+  );
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -265,6 +281,16 @@ export function NovoPedido() {
               </option>
             ))}
           </Selecao>
+          {sugestao && sugestao.vinculoId !== motoboy && (
+            <p className="-mt-2 flex flex-wrap items-center gap-x-2 text-sm text-concreto">
+              Sugestão: {sugestao.nome}
+              {sugestao.minutosAteColeta !== null && `, a ${sugestao.minutosAteColeta} min da coleta`}
+              {sugestao.pedidosAtivos === 0 ? ', livre.' : `, com ${sugestao.pedidosAtivos} em andamento.`}
+              <Botao variante="discreto" onClick={() => setMotoboy(sugestao.vinculoId)}>
+                Usar sugestão
+              </Botao>
+            </p>
+          )}
           <AreaTexto
             rotulo="Observações para o motoboy (opcional)"
             placeholder="Ex.: interfone quebrado, ligar ao chegar."

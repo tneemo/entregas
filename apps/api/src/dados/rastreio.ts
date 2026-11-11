@@ -6,9 +6,17 @@
 // pedidos, e o link expira RASTREIO_HORAS_APOS_CONCLUSAO depois que o pedido termina.
 
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { RASTREIO_HORAS_APOS_CONCLUSAO, statusFinal, type RastreioResposta, type StatusPedido } from '@entregas/shared';
+import {
+  RASTREIO_HORAS_APOS_CONCLUSAO,
+  statusFinal,
+  type RastreioResposta,
+  type StatusPedido,
+  type schemaAvaliacao,
+} from '@entregas/shared';
+import type { z } from 'zod';
 import type { Db } from '../db/index.ts';
-import { empresas, eventosPedido, paradas, pedidos, usuarios, vinculos } from '../db/schema.ts';
+import { violouUnicidade } from '../db/index.ts';
+import { avaliacoes, empresas, eventosPedido, paradas, pedidos, usuarios, vinculos } from '../db/schema.ts';
 import { ErroApi, naoEncontrado } from '../erros.ts';
 
 const FORMATO_TOKEN = /^[A-Za-z0-9_-]{16,64}$/;
@@ -44,7 +52,7 @@ export async function buscarRastreio(db: Db, token: string, agora = Date.now()):
     throw new ErroApi(410, 'rastreio_expirado', 'Este link de acompanhamento expirou.');
   }
 
-  const [destino, saida] = await Promise.all([
+  const [destino, saida, avaliacao] = await Promise.all([
     db
       .select({ endereco: paradas.endereco })
       .from(paradas)
@@ -61,6 +69,11 @@ export async function buscarRastreio(db: Db, token: string, agora = Date.now()):
         ),
       )
       .orderBy(desc(eventosPedido.criadoEm))
+      .get(),
+    db
+      .select({ nota: avaliacoes.nota, comentario: avaliacoes.comentario })
+      .from(avaliacoes)
+      .where(and(eq(avaliacoes.pedidoId, p.id), eq(avaliacoes.empresaId, p.empresaId)))
       .get(),
   ]);
 
@@ -100,7 +113,36 @@ export async function buscarRastreio(db: Db, token: string, agora = Date.now()):
       codigoEntrega: terminou || p.status === 'em_devolucao' ? null : p.codigoEntrega,
       motoboy: motoboy ? { primeiroNome: motoboy } : null,
       aoVivo: p.status === 'em_rota',
+      destino:
+        p.status === 'em_rota' && e?.localizacao
+          ? { latitude: e.localizacao.latitude, longitude: e.localizacao.longitude }
+          : null,
+      podeAvaliar: p.status === 'entregue' && !avaliacao,
+      avaliacao: avaliacao ?? null,
     },
     interno: { empresaId: p.empresaId, pedidoId: p.id, motoboyVinculoId: p.motoboyVinculoId },
   };
+}
+
+/**
+ * Nota do destinatário pelo link. Só depois de entregue, uma vez por pedido, e enquanto o
+ * link vale. Devolve o pedido para a central ser avisada em tempo real.
+ */
+export async function avaliarEntrega(db: Db, token: string, dados: z.output<typeof schemaAvaliacao>) {
+  const { resposta, interno } = await buscarRastreio(db, token);
+  if (resposta.status !== 'entregue') {
+    throw new ErroApi(409, 'ainda_nao_entregue', 'A avaliação fica disponível depois que o pedido é entregue.');
+  }
+  try {
+    await db.insert(avaliacoes).values({
+      empresaId: interno.empresaId,
+      pedidoId: interno.pedidoId,
+      nota: dados.nota,
+      comentario: dados.comentario ?? null,
+    });
+  } catch (erro) {
+    if (violouUnicidade(erro)) throw new ErroApi(409, 'ja_avaliado', 'Este pedido já foi avaliado. Obrigado!');
+    throw erro;
+  }
+  return interno;
 }

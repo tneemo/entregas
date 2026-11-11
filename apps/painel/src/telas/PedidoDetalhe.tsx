@@ -19,7 +19,18 @@ import {
 } from '@entregas/shared';
 import { api } from '../api.ts';
 import { useEu } from '../sessao.ts';
-import { AreaTexto, AvisoErro, Botao, Campo, Selecao, erroDoCampo } from '../componentes/ui.tsx';
+import {
+  AreaTexto,
+  AvisoErro,
+  Botao,
+  Campo,
+  Cartao,
+  Esqueleto,
+  Estrelas,
+  Selecao,
+  erroDoCampo,
+} from '../componentes/ui.tsx';
+import { silenciarAviso } from '../tempo-real.ts';
 import { SeloStatus, enderecoEmLinha, horaCurta, rotuloMotoboy, useMotoboys } from '../componentes/pedido.tsx';
 import type { Marcador } from '../componentes/Mapa.tsx';
 
@@ -36,7 +47,7 @@ function DistanciaDaPorta({ evento }: { evento: EventoPedidoResposta }) {
     return <p className="text-sm text-ok">No endereço de entrega (a {textoDistancia(metros)}).</p>;
   }
   return (
-    <p className="border-l-4 border-aluguel bg-white px-2 py-1 text-sm">
+    <p className="border-l-4 border-aluguel bg-superficie px-2 py-1 text-sm">
       Registrado a {textoDistancia(metros)} do endereço de entrega. Confira com o motoboy.
     </p>
   );
@@ -122,7 +133,10 @@ function CodigoEntrega({ pedido, nomeEmpresa }: { pedido: Pedido; nomeEmpresa: s
   }
 
   return (
-    <section className="flex flex-col gap-3 border-l-4 border-mercosul bg-white p-4" aria-labelledby="titulo-codigo">
+    <section
+      className="flex flex-col gap-3 rounded-lg border border-linha border-l-4 border-l-mercosul bg-superficie p-4"
+      aria-labelledby="titulo-codigo"
+    >
       <h2 id="titulo-codigo" className="text-xl">
         Código de entrega
       </h2>
@@ -140,7 +154,7 @@ function CodigoEntrega({ pedido, nomeEmpresa }: { pedido: Pedido; nomeEmpresa: s
           href={`https://wa.me/${tel}?text=${encodeURIComponent(mensagem)}`}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex min-h-10 items-center self-start rounded-md bg-ok px-4 text-[15px] font-medium text-white hover:brightness-110"
+          className="inline-flex min-h-10 items-center self-start rounded-md bg-ok px-4 text-[15px] font-medium text-contraste hover:brightness-110"
         >
           Enviar link e código pelo WhatsApp
         </a>
@@ -170,8 +184,11 @@ function Acoes({ empresaId, pedido }: { empresaId: string; pedido: Pedido }) {
   const [dados, setDados] = useState<DadosAcaoPedido>({});
 
   const executar = useMutation({
-    mutationFn: ({ acao, corpo }: { acao: AcaoPedido; corpo: DadosAcaoPedido }) =>
-      api<Pedido>(`/empresas/${empresaId}/pedidos/${pedido.id}/acoes/${acao}`, { metodo: 'POST', corpo }),
+    mutationFn: ({ acao, corpo }: { acao: AcaoPedido; corpo: DadosAcaoPedido }) => {
+      // Quem fez a ação já sabe o resultado: não precisa do aviso de tempo real.
+      silenciarAviso(pedido.id);
+      return api<Pedido>(`/empresas/${empresaId}/pedidos/${pedido.id}/acoes/${acao}`, { metodo: 'POST', corpo });
+    },
     onSuccess: (atualizado) => {
       consultas.setQueryData(['pedido', empresaId, pedido.id], atualizado);
       consultas.invalidateQueries({ queryKey: ['pedidos', empresaId] });
@@ -221,7 +238,7 @@ function Acoes({ empresaId, pedido }: { empresaId: string; pedido: Pedido }) {
       </div>
 
       {aberta && (
-        <form onSubmit={confirmar} className="flex flex-col gap-3 bg-white p-4">
+        <form onSubmit={confirmar} className="flex flex-col gap-3 rounded-lg border border-linha bg-superficie p-4">
           {exige === 'motoboy' && (
             <Selecao
               rotulo="Motoboy"
@@ -285,7 +302,7 @@ export function PedidoDetalhe() {
     refetchInterval: 60_000,
   });
 
-  if (pedido.isLoading) return <p>Carregando pedido…</p>;
+  if (pedido.isLoading) return <Esqueleto linhas={4} className="max-w-5xl" />;
   if (pedido.error || !pedido.data) return <AvisoErro erro={pedido.error ?? new Error('Pedido não encontrado.')} />;
   const p = pedido.data;
   const semCodigo = p.status === 'entregue' && p.eventos.at(-1)?.acao === 'entregar_sem_codigo';
@@ -308,10 +325,10 @@ export function PedidoDetalhe() {
             ` Se ele não aceitar até ${horaCurta(p.aceiteAte)}, o pedido volta para a fila.`}
         </p>
         {p.motivo && (p.status === 'falhou' || p.status === 'cancelado' || p.status === 'em_devolucao') && (
-          <p className="border-l-4 border-aluguel bg-white px-3 py-2">Motivo: {p.motivo}</p>
+          <p className="border-l-4 border-aluguel bg-superficie px-3 py-2">Motivo: {p.motivo}</p>
         )}
         {semCodigo && (
-          <p className="border-l-4 border-sinal bg-white px-3 py-2">
+          <p className="border-l-4 border-sinal bg-superficie px-3 py-2">
             Entregue sem o código. Com quem ou onde ficou: {p.motivo}. Confira a foto do motoboy.
           </p>
         )}
@@ -362,7 +379,7 @@ export function PedidoDetalhe() {
                       <img
                         src={f.url}
                         alt={`Foto de ${f.tipo === 'falha' ? 'tentativa de entrega' : f.tipo} às ${horaCurta(f.criadoEm)}`}
-                        className="h-32 w-32 rounded border border-linha bg-white object-cover"
+                        className="h-32 w-32 rounded border border-linha bg-superficie object-cover"
                         loading="lazy"
                       />
                       {f.tipo === 'falha' ? 'Tentativa' : f.tipo === 'coleta' ? 'Coleta' : 'Entrega'},{' '}
@@ -379,13 +396,36 @@ export function PedidoDetalhe() {
           {p.status !== 'entregue' && p.status !== 'cancelado' && p.status !== 'devolvido' && (
             <CodigoEntrega pedido={p} nomeEmpresa={nomeEmpresa} />
           )}
+          {p.avaliacao && (
+            <Cartao className="flex flex-col gap-2 p-4">
+              <h2 className="text-xl">Avaliação do cliente</h2>
+              <div className="flex items-center gap-2">
+                <Estrelas nota={p.avaliacao.nota} tamanho={20} />
+                <span className="text-sm text-concreto">às {horaCurta(p.avaliacao.criadoEm)}</span>
+              </div>
+              {p.avaliacao.comentario ? (
+                <p className="whitespace-pre-line">{p.avaliacao.comentario}</p>
+              ) : (
+                <p className="text-sm text-concreto">Sem comentário.</p>
+              )}
+            </Cartao>
+          )}
+          {p.status === 'entregue' && p.avaliacao === null && (
+            <p className="text-sm text-concreto">
+              O cliente ainda não avaliou. A nota é dada pelo link de acompanhamento, que vale por 48 horas depois da
+              entrega.
+            </p>
+          )}
           <section className="flex flex-col gap-3" aria-labelledby="titulo-historico">
             <h2 id="titulo-historico" className="text-xl">
               Histórico
             </h2>
             <ol className="flex flex-col">
               {p.eventos.map((e) => (
-                <li key={e.id} className="grid grid-cols-[3.5rem_1fr] gap-x-3 border-l-2 border-linha py-2 pl-3">
+                <li
+                  key={e.id}
+                  className="relative grid grid-cols-[3.5rem_1fr] gap-x-3 border-l-2 border-linha py-2 pl-4 before:absolute before:top-3.5 before:-left-[5px] before:h-2 before:w-2 before:rounded-full before:bg-concreto last:before:bg-mercosul last:before:ring-4 last:before:ring-mercosul/20"
+                >
                   <time dateTime={e.criadoEm} className="text-sm tabular-nums text-concreto">
                     {horaCurta(e.criadoEm)}
                   </time>

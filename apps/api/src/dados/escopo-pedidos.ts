@@ -3,7 +3,7 @@
 // que ainda estão em andamento, e nunca recebe o código de entrega.
 // A exceção é expirarAceites(), tarefa do sistema que roda para todas as empresas.
 
-import { and, asc, count, desc, eq, gte, inArray, lt, lte, notInArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lt, lte, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import {
   FOTO_DA_ACAO,
@@ -32,6 +32,7 @@ import {
 import type { z } from 'zod';
 import type { Db } from '../db/index.ts';
 import {
+  avaliacoes,
   clientes,
   dispositivos,
   empresas,
@@ -47,6 +48,7 @@ import {
 import type { ContextoEmpresa } from '../tipos.ts';
 import { ErroApi, camposInvalidos, naoEncontrado, proibido } from '../erros.ts';
 import { gerarToken } from '../auth/cripto.ts';
+import { DIA_MS, inicioDoDia } from './fuso.ts';
 
 type DadosCriar = z.output<typeof schemaCriarPedido>;
 type DadosAcao = z.output<typeof schemaAcaoPedidoComPosicao>;
@@ -61,13 +63,14 @@ const ASSINATURAS: Record<string, (b: Uint8Array) => boolean> = {
 const EXTENSAO: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 export type Situacao = 'ativos' | 'concluidos';
 
-const DIA_MS = 24 * 60 * 60 * 1000;
+/** Quantos pedidos a busca devolve, no máximo. */
+const LIMITE_BUSCA = 50;
 
-/** Início do dia em Cascavel (UTC-3, sem horário de verão desde 2019). */
-function inicioDoDia(dia?: string): number {
-  const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  return Date.parse(`${dia ?? hoje}T00:00:00-03:00`);
-}
+/** Texto digitado vira padrão de LIKE sem que % e _ funcionem como curinga. */
+const contendo = (texto: string) => `%${texto.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+const coordenadas = (e: { localizacao?: { latitude: number; longitude: number } }) =>
+  e.localizacao ? { latitude: e.localizacao.latitude, longitude: e.localizacao.longitude } : null;
 
 function gerarCodigo(): string {
   const [n] = crypto.getRandomValues(new Uint32Array(1));
@@ -186,12 +189,14 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     );
 
   const destino = alias(paradas, 'destino');
+  const origem = alias(paradas, 'origem');
   const usuarioMotoboy = alias(usuarios, 'usuario_motoboy');
 
   const selecaoResumo = {
     pedido: pedidos,
     destinoNome: destino.nome,
     destinoEndereco: destino.endereco,
+    origemEndereco: origem.endereco,
     motoboyNome: usuarioMotoboy.nome,
   };
 
@@ -200,19 +205,33 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       .select(selecaoResumo)
       .from(pedidos)
       .innerJoin(destino, and(eq(destino.pedidoId, pedidos.id), eq(destino.ordem, 1)))
+      .innerJoin(origem, and(eq(origem.pedidoId, pedidos.id), eq(origem.ordem, 0)))
       .leftJoin(vinculos, eq(vinculos.id, pedidos.motoboyVinculoId))
       .leftJoin(usuarioMotoboy, eq(usuarioMotoboy.id, vinculos.usuarioId));
 
   type LinhaResumo = Awaited<ReturnType<ReturnType<typeof consultaResumo>['all']>>[number];
 
-  const paraResumo = ({ pedido: p, destinoNome, destinoEndereco: e, motoboyNome }: LinhaResumo): PedidoResumo => ({
+  const paraResumo = ({
+    pedido: p,
+    destinoNome,
+    destinoEndereco: e,
+    origemEndereco,
+    motoboyNome,
+  }: LinhaResumo): PedidoResumo => ({
     id: p.id,
     numero: p.numero,
     status: p.status,
     criadoEm: p.criadoEm.toISOString(),
     atualizadoEm: p.atualizadoEm.toISOString(),
     concluidoEm: p.concluidoEm?.toISOString() ?? null,
-    destino: { nome: destinoNome, bairro: e.bairro, logradouro: e.logradouro, numero: e.numero },
+    destino: {
+      nome: destinoNome,
+      bairro: e.bairro,
+      logradouro: e.logradouro,
+      numero: e.numero,
+      coordenadas: coordenadas(e),
+    },
+    pontoColeta: coordenadas(origemEndereco),
     motoboy: p.motoboyVinculoId && motoboyNome ? { vinculoId: p.motoboyVinculoId, nome: motoboyNome } : null,
     formaPagamento: p.formaPagamento,
     valorACobrarCentavos: p.valorACobrarCentavos,
@@ -260,7 +279,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       .get();
     if (!linha) throw naoEncontrado('Pedido não encontrado.');
 
-    const [pontos, eventos, fotos, regrasEmpresa] = await Promise.all([
+    const [pontos, eventos, fotos, regrasEmpresa, avaliacao] = await Promise.all([
       db
         .select()
         .from(paradas)
@@ -282,6 +301,14 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
         .all(),
       // A foto só é exigida do motoboy; a central registra sem foto (ex.: ele ligou).
       ehMotoboy ? regras() : null,
+      // A nota do cliente é assunto da central, não do motoboy.
+      ehMotoboy
+        ? null
+        : db
+            .select({ nota: avaliacoes.nota, comentario: avaliacoes.comentario, criadoEm: avaliacoes.criadoEm })
+            .from(avaliacoes)
+            .where(and(eq(avaliacoes.pedidoId, pedidoId), eq(avaliacoes.empresaId, empresaId)))
+            .get(),
     ]);
 
     const p = linha.pedido;
@@ -308,7 +335,19 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       taxaEntregaCentavos: p.taxaEntregaCentavos,
       observacoes: p.observacoes,
       motivo: p.motivo,
-      ...(ehMotoboy ? {} : { codigoEntrega: p.codigoEntrega, rastreio: { caminho: caminhoRastreio(p.tokenRastreio) } }),
+      ...(ehMotoboy
+        ? {}
+        : {
+            codigoEntrega: p.codigoEntrega,
+            rastreio: { caminho: caminhoRastreio(p.tokenRastreio) },
+            avaliacao: avaliacao
+              ? {
+                  nota: avaliacao.nota,
+                  comentario: avaliacao.comentario,
+                  criadoEm: avaliacao.criadoEm.toISOString(),
+                }
+              : null,
+          }),
       codigoBloqueado,
       acoes,
       fotoObrigatoria: regrasEmpresa ? acoes.filter((a) => fotoObrigatoria(a, regrasEmpresa)) : [],
@@ -336,7 +375,30 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
   }
 
   return {
-    async listar(situacao: Situacao, dia?: string): Promise<PedidoResumo[]> {
+    /**
+     * `busca`: número do pedido, nome ou telefone do destinatário, em qualquer situação e
+     * qualquer dia (os mais novos primeiro). Sem busca, vale a situação (e o dia, nos concluídos).
+     */
+    async listar(situacao: Situacao, dia?: string, busca?: string): Promise<PedidoResumo[]> {
+      if (busca) {
+        const digitos = busca.replace(/\D/g, '');
+        const padrao = contendo(busca);
+        const linhas = await consultaResumo()
+          .where(
+            and(
+              visiveis(),
+              or(
+                /^\d{1,9}$/.test(busca) ? eq(pedidos.numero, Number(busca)) : undefined,
+                sql`${destino.nome} LIKE ${padrao} ESCAPE '\\'`,
+                digitos.length >= 4 ? sql`${destino.telefone} LIKE ${contendo(digitos)} ESCAPE '\\'` : undefined,
+              ),
+            ),
+          )
+          .orderBy(desc(pedidos.criadoEm))
+          .limit(LIMITE_BUSCA)
+          .all();
+        return linhas.map(paraResumo);
+      }
       const inicio = inicioDoDia(dia);
       const filtro =
         situacao === 'ativos'

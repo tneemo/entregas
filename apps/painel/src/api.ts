@@ -11,14 +11,23 @@ export class ErroDaApi extends Error {
   }
 }
 
-export async function api<T>(caminho: string, opcoes: { metodo?: string; corpo?: unknown } = {}): Promise<T> {
-  const { metodo = 'GET', corpo } = opcoes;
+/** Chave para repetir uma operação sem executá-la duas vezes (cabeçalho Idempotency-Key). */
+export const novaChave = () => crypto.randomUUID();
+
+export async function api<T>(
+  caminho: string,
+  opcoes: { metodo?: string; corpo?: unknown; chave?: string } = {},
+): Promise<T> {
+  const { metodo = 'GET', corpo, chave } = opcoes;
   let resposta: Response;
   try {
     resposta = await fetch(`/api/v1${caminho}`, {
       method: metodo,
       credentials: 'same-origin',
-      headers: corpo === undefined ? undefined : { 'content-type': 'application/json' },
+      headers: {
+        ...(corpo === undefined ? {} : { 'content-type': 'application/json' }),
+        ...(chave ? { 'idempotency-key': chave } : {}),
+      },
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
     });
   } catch {

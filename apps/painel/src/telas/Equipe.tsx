@@ -109,7 +109,7 @@ function LinhaMembro({
             value={membro.papel}
             disabled={atualizar.isPending}
             onChange={(e) => atualizar.mutate({ papel: e.target.value as Papel })}
-            className="min-h-9 rounded border border-linha bg-white px-1"
+            className="min-h-9 rounded border border-linha bg-superficie px-1"
           >
             {PAPEIS.map((p) => (
               <option key={p} value={p}>
@@ -135,7 +135,7 @@ function LinhaMembro({
             onChange={(e) =>
               atualizar.mutate({ tipoVinculo: (e.target.value || null) as DadosAtualizarMembro['tipoVinculo'] })
             }
-            className="min-h-9 rounded border border-linha bg-white px-1"
+            className="min-h-9 rounded border border-linha bg-superficie px-1"
           >
             <option value="">Não informado</option>
             {TIPOS_VINCULO.map((t) => (

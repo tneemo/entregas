@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ROTULOS_STATUS,
@@ -19,7 +19,7 @@ const COR_STATUS: Record<StatusPedido, string> = {
   atribuido: 'bg-mercosul/10 text-mercosul ring-mercosul/40',
   aceito: 'bg-mercosul/10 text-mercosul ring-mercosul/40',
   coletando: 'bg-mercosul/10 text-mercosul ring-mercosul/40',
-  em_rota: 'bg-mercosul text-white ring-mercosul',
+  em_rota: 'bg-mercosul text-contraste ring-mercosul',
   entregue: 'bg-ok/10 text-ok ring-ok/40',
   falhou: 'bg-aluguel/10 text-aluguel ring-aluguel/50',
   em_devolucao: 'bg-aluguel/10 text-aluguel ring-aluguel/50',
@@ -59,12 +59,30 @@ export function haQuanto(iso: string) {
  * Fila de pedidos. O tempo real (tempo-real.ts) avisa na hora quando algo muda;
  * a consulta periódica é só uma rede de segurança para conexões instáveis.
  */
-export function usePedidos(empresaId: string, situacao: 'ativos' | 'concluidos') {
+export function usePedidos(empresaId: string, situacao: 'ativos' | 'concluidos', ativo = true) {
   return useQuery({
     queryKey: ['pedidos', empresaId, situacao],
     queryFn: () => api<PedidoResumo[]>(`/empresas/${empresaId}/pedidos?situacao=${situacao}`),
     refetchInterval: 60_000,
+    enabled: ativo && Boolean(empresaId),
   });
+}
+
+/** Relógio que anda sozinho, para "há 20 s" e contagens regressivas não congelarem na tela. */
+export function useAgora(intervaloMs = 5_000) {
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setAgora(Date.now()), intervaloMs);
+    return () => clearInterval(t);
+  }, [intervaloMs]);
+  return agora;
+}
+
+/** "1:32" até o prazo; "esgotando" quando já passou e o servidor ainda não devolveu à fila. */
+export function contagem(ate: string, agora: number) {
+  const s = Math.round((Date.parse(ate) - agora) / 1000);
+  if (s <= 0) return 'esgotando';
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 export function useMotoboys(empresaId: string) {

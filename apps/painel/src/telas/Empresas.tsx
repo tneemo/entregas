@@ -57,7 +57,7 @@ function CadastrarEmpresa({ aoCadastrar }: { aoCadastrar: (r: CriarEmpresaRespos
   }
 
   return (
-    <form onSubmit={enviar} className="flex flex-col gap-5 border-l-4 border-mercosul bg-white p-5">
+    <form onSubmit={enviar} className="flex flex-col gap-5 border-l-4 border-mercosul bg-superficie p-5">
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">Tipo de empresa</legend>
         <div className="flex flex-wrap gap-x-6 gap-y-2">

@@ -64,13 +64,19 @@ const filtroLista = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
+  busca: z
+    .string()
+    .trim()
+    .max(80)
+    .transform((v) => v || undefined)
+    .optional(),
 });
 
 export const rotasPedidos = new Hono<AppEnv>()
   .get('/', exigirEmpresa(), async (c) => {
     const filtro = filtroLista.safeParse(c.req.query());
     if (!filtro.success) throw naoEncontrado('Filtro inválido.');
-    return c.json(await escopo(c).listar(filtro.data.situacao, filtro.data.dia));
+    return c.json(await escopo(c).listar(filtro.data.situacao, filtro.data.dia, filtro.data.busca));
   })
 
   .post('/', exigirEmpresa('admin', 'despachante'), async (c) => {

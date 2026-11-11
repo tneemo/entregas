@@ -8,6 +8,12 @@
       "port": 8787
     },
     {
+      "name": "api-demo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:demo", "-w", "@entregas/api"],
+      "port": 8787
+    },
+    {
       "name": "painel",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "-w", "@entregas/painel"],

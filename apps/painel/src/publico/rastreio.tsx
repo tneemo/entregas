@@ -10,6 +10,9 @@ import { ETAPAS_RASTREIO, RASTREIO_HORAS_APOS_CONCLUSAO, situacaoRastreio } from
 import { ROTULOS_PAGAMENTO, statusFinal } from '@entregas/shared/pedidos';
 import { formatarReais } from '@entregas/shared/dinheiro';
 import { formatarTelefone } from '@entregas/shared/validacao';
+import { POSICAO_UTIL_S, preverChegada, type PrevisaoChegada } from '@entregas/shared/despacho';
+import { textoDistancia } from '@entregas/shared/localizacao';
+import { IconeEstrela } from '../componentes/icones.tsx';
 import '../estilo.css';
 
 const Mapa = lazy(() => import('../componentes/Mapa.tsx').then((m) => ({ default: m.Mapa })));
@@ -161,7 +164,7 @@ function Etapas({ etapa, problema, entregue }: { etapa: number; problema: boolea
 function Bloco({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-1">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-concreto">{titulo}</h2>
+      <h2 className="text-sm font-medium text-concreto">{titulo}</h2>
       {children}
     </section>
   );
@@ -194,14 +197,16 @@ function AoVivo({
                 rotulo,
                 precisao: posicao.precisao,
               },
+              ...(dados.destino ? [{ id: 'destino', tipo: 'entrega' as const, ...dados.destino, rotulo: 'Você' }] : []),
             ]}
+            linhas={dados.destino ? [{ id: 'trajeto', de: posicao, para: dados.destino }] : undefined}
             seguir
             rotulo={`Posição de ${rotulo} no mapa`}
             className="h-72"
           />
         </Suspense>
       ) : (
-        <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-linha bg-white px-4 text-center text-concreto">
+        <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-linha bg-superficie px-4 text-center text-concreto">
           Aguardando a localização do entregador…
         </div>
       )}
@@ -241,7 +246,7 @@ function Pagina() {
           <button
             type="button"
             onClick={() => void carregar()}
-            className="inline-flex min-h-11 items-center self-start rounded-md bg-mercosul px-4 font-medium text-white"
+            className="inline-flex min-h-11 items-center self-start rounded-md bg-mercosul px-4 font-medium text-contraste"
           >
             Tentar de novo
           </button>
@@ -260,18 +265,41 @@ function Pagina() {
       ? `Saiu para entrega ${quando(d.horarios.saiuParaEntrega)}.`
       : `Pedido feito ${quando(d.horarios.recebido)}.`;
   const telefone = d.empresa.telefone;
+  // Só promete horário com posição recente; com o celular do entregador sem sinal, fica o texto normal.
+  const previsao: PrevisaoChegada | null =
+    d.aoVivo && d.destino && posicao && Date.now() - Date.parse(posicao.registradoEm) <= POSICAO_UTIL_S * 1000
+      ? preverChegada(posicao, d.destino)
+      : null;
 
   return (
     <Moldura>
       <header className="flex flex-col gap-1">
-        <p className="text-sm font-medium uppercase tracking-wide text-concreto">Acompanhe sua entrega</p>
         <h1 className="text-3xl">{d.empresa.nomeFantasia}</h1>
-        <p className="text-concreto">Pedido nº {d.numero}</p>
+        <p className="text-concreto">Acompanhe sua entrega. Pedido nº {d.numero}.</p>
       </header>
 
-      <section aria-live="polite" className={`flex flex-col gap-2 rounded-md border-l-4 bg-white p-4 ${borda}`}>
-        <h2 className="text-3xl">{situacao.titulo}</h2>
-        <p>{situacao.texto}</p>
+      <section
+        aria-live="polite"
+        className={`flex flex-col gap-2 rounded-lg border border-linha border-l-4 bg-superficie p-4 ${borda}`}
+      >
+        {previsao ? (
+          <>
+            <h2 className="text-lg text-concreto">{situacao.titulo}</h2>
+            <p className="font-cond text-5xl font-semibold leading-none">
+              {previsao.chegando ? 'Chegando' : `Chega em ${previsao.minutos} min`}
+            </p>
+            <p>
+              {previsao.chegando
+                ? 'O entregador está na sua rua. Deixe o código à mão.'
+                : `O entregador está a ${textoDistancia(previsao.distanciaM)} de você. A previsão se ajusta conforme ele anda.`}
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-3xl">{situacao.titulo}</h2>
+            <p>{situacao.texto}</p>
+          </>
+        )}
         <p className="text-sm text-concreto">
           {d.motoboy && !statusFinal(d.status) ? `Entregador: ${d.motoboy.primeiroNome}. ` : ''}
           {momento}
@@ -282,9 +310,21 @@ function Pagina() {
 
       {d.aoVivo && <AoVivo dados={d} posicao={posicao} conectado={conectado} />}
 
+      {d.podeAvaliar && <Avaliar empresa={d.empresa.nomeFantasia} aoEnviar={carregar} />}
+      {d.avaliacao && (
+        <section className="flex flex-col gap-2 rounded-lg border border-linha bg-superficie p-4">
+          <h2 className="text-xl">Obrigado pela avaliação</h2>
+          <Estrelas nota={d.avaliacao.nota} />
+          {d.avaliacao.comentario && <p className="text-concreto">"{d.avaliacao.comentario}"</p>}
+        </section>
+      )}
+
       {d.codigoEntrega && (
-        <section className="flex flex-col gap-1 rounded-md bg-white p-4" aria-labelledby="titulo-codigo">
-          <h2 id="titulo-codigo" className="text-sm font-medium uppercase tracking-wide text-concreto">
+        <section
+          className="flex flex-col gap-1 rounded-lg border border-linha bg-superficie p-4"
+          aria-labelledby="titulo-codigo"
+        >
+          <h2 id="titulo-codigo" className="text-sm font-medium text-concreto">
             Código de entrega
           </h2>
           <p className="font-cond text-5xl font-bold tracking-[0.25em] text-mercosul">
@@ -333,7 +373,7 @@ function Pagina() {
           <div className="flex flex-wrap gap-2">
             <a
               href={`tel:${telefone}`}
-              className="inline-flex min-h-11 items-center rounded-md border border-asfalto/30 bg-white px-4 font-medium"
+              className="inline-flex min-h-11 items-center rounded-md border border-asfalto/30 bg-superficie px-4 font-medium"
             >
               Ligar {formatarTelefone(telefone)}
             </a>
@@ -341,7 +381,7 @@ function Pagina() {
               href={`https://wa.me/${telefone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Sobre o pedido nº ${d.numero}:`)}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-11 items-center rounded-md bg-ok px-4 font-medium text-white"
+              className="inline-flex min-h-11 items-center rounded-md bg-ok px-4 font-medium text-contraste"
             >
               WhatsApp
             </a>
@@ -354,6 +394,110 @@ function Pagina() {
         localização do entregador aparece apenas enquanto ele está a caminho.
       </footer>
     </Moldura>
+  );
+}
+
+function Estrelas({ nota }: { nota: number }) {
+  return (
+    <span className="flex gap-1 text-sinal" role="img" aria-label={`${nota} de 5 estrelas`}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <IconeEstrela key={n} tamanho={24} cheia={n <= nota} />
+      ))}
+    </span>
+  );
+}
+
+const PALAVRA_DA_NOTA = ['', 'Ruim', 'Regular', 'Boa', 'Muito boa', 'Excelente'];
+
+/** Estrelas e comentário, logo depois da entrega. Uma avaliação por pedido. */
+function Avaliar({ empresa, aoEnviar }: { empresa: string; aoEnviar: () => Promise<void> }) {
+  const [nota, setNota] = useState(0);
+  const [comentario, setComentario] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string>();
+
+  async function enviar(e: React.FormEvent) {
+    e.preventDefault();
+    if (nota === 0) return;
+    setEnviando(true);
+    setErro(undefined);
+    try {
+      const r = await fetch(`/api/v1/rastreio/${encodeURIComponent(token)}/avaliacao`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ nota, comentario }),
+      });
+      // 409: já avaliado em outra aba. Nos dois casos a página recarrega e mostra a nota.
+      if (!r.ok && r.status !== 409) {
+        const corpo = (await r.json().catch(() => null)) as ErroResposta | null;
+        setErro(corpo?.erro.mensagem ?? 'Não foi possível enviar. Tente de novo.');
+        return;
+      }
+      await aoEnviar();
+    } catch {
+      setErro('Sem conexão. Confira a internet e tente de novo.');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <form onSubmit={enviar} className="flex flex-col gap-3 rounded-lg border border-linha bg-superficie p-4">
+      <h2 className="text-xl">Como foi a entrega?</h2>
+      <fieldset className="flex items-center gap-1">
+        <legend className="sr-only">Nota de 1 a 5 estrelas</legend>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <label
+            key={n}
+            className={`cursor-pointer rounded-md p-1.5 has-focus-visible:outline-3 has-focus-visible:outline-sinal ${
+              n <= nota ? 'text-sinal' : 'text-concreto/50'
+            }`}
+          >
+            <input
+              type="radio"
+              name="nota"
+              value={n}
+              checked={nota === n}
+              onChange={() => setNota(n)}
+              className="sr-only"
+            />
+            <IconeEstrela tamanho={34} cheia={n <= nota} />
+            <span className="sr-only">
+              {n} {n === 1 ? 'estrela' : 'estrelas'}
+            </span>
+          </label>
+        ))}
+        <span className="ml-2 font-medium" aria-live="polite">
+          {PALAVRA_DA_NOTA[nota]}
+        </span>
+      </fieldset>
+      {nota > 0 && (
+        <>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Quer contar algo para a {empresa}? (opcional)
+            <textarea
+              rows={3}
+              maxLength={500}
+              value={comentario}
+              onChange={(e) => setComentario(e.target.value)}
+              className="rounded-md border border-linha bg-superficie px-3 py-2 text-base font-normal outline-none focus:border-mercosul"
+            />
+          </label>
+          {erro && (
+            <p role="alert" className="text-sm text-aluguel">
+              {erro}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={enviando}
+            className="inline-flex min-h-11 items-center self-start rounded-md bg-mercosul px-4 font-medium text-contraste disabled:opacity-60"
+          >
+            {enviando ? 'Enviando…' : 'Enviar avaliação'}
+          </button>
+        </>
+      )}
+    </form>
   );
 }
 
