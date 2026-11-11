@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import {
+  PERIODOS_INDICADORES,
   normalizarTelefone,
   podeConvidar,
   schemaAtualizarDadosEmpresa,
@@ -17,6 +18,7 @@ import { lerCorpo } from '../validar.ts';
 import { exigirEmpresa } from '../middleware/empresa.ts';
 import { escopoEmpresa } from '../dados/escopo-empresa.ts';
 import { escopoPedidos } from '../dados/escopo-pedidos.ts';
+import { escopoIndicadores } from '../dados/indicadores.ts';
 import { comLocalizacao, geocodificar } from '../geocodificacao.ts';
 
 const escopo = (c: { var: AppEnv['Variables'] }) => escopoEmpresa(c.var.db, c.var.empresa);
@@ -35,6 +37,13 @@ export const rotasEmpresa = new Hono<AppEnv>()
   .post('/enderecos/localizar', exigirEmpresa('admin', 'despachante'), async (c) => {
     const endereco = await lerCorpo(c, schemaEndereco);
     return c.json<LocalizarResposta>({ localizacao: await geocodificar(c.env, endereco) });
+  })
+
+  /** Visão geral da operação: agora e no período (hoje, 7 ou 30 dias). */
+  .get('/indicadores', exigirEmpresa('admin', 'despachante'), async (c) => {
+    const dias = PERIODOS_INDICADORES.find((d) => String(d) === (c.req.query('dias') ?? '7'));
+    if (!dias) throw naoEncontrado('Período inválido.');
+    return c.json(await escopoIndicadores(c.var.db, c.var.empresa).resumo(dias));
   })
 
   .get('/motoboys', exigirEmpresa('admin', 'despachante'), async (c) =>

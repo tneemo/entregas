@@ -2,7 +2,7 @@
 
 import type { Papel, StatusEmpresa, StatusVinculo, TipoEmpresa, TipoVinculo } from './papeis.ts';
 import type { AcaoPedido, FormaPagamento, RegrasEntrega, StatusPedido, TipoFoto } from './pedidos.ts';
-import type { Localizacao } from './localizacao.ts';
+import type { Coordenadas, Localizacao } from './localizacao.ts';
 
 export interface ErroResposta {
   erro: { codigo: string; mensagem: string; campos?: Record<string, string[]> };
@@ -149,7 +149,16 @@ export interface PedidoResumo {
   criadoEm: string;
   atualizadoEm: string;
   concluidoEm: string | null;
-  destino: { nome: string | null; bairro: string; logradouro: string; numero: string };
+  destino: {
+    nome: string | null;
+    bairro: string;
+    logradouro: string;
+    numero: string;
+    /** Ponto de entrega no mapa, quando o endereço tem um. */
+    coordenadas: Coordenadas | null;
+  };
+  /** Ponto de coleta no mapa: base da sugestão de motoboy mais próximo. */
+  pontoColeta: Coordenadas | null;
   motoboy: { vinculoId: string; nome: string } | null;
   formaPagamento: FormaPagamento;
   valorACobrarCentavos: number;
@@ -192,6 +201,15 @@ export interface PedidoDetalhe extends PedidoResumo {
   fotos: FotoResposta[];
   /** Link público de acompanhamento (só a central recebe, para enviar ao cliente). */
   rastreio?: { caminho: string };
+  /** Nota que o destinatário deu pelo link de acompanhamento (só a central vê). */
+  avaliacao?: AvaliacaoResposta | null;
+}
+
+export interface AvaliacaoResposta {
+  /** 1 a 5 estrelas. */
+  nota: number;
+  comentario: string | null;
+  criadoEm: string;
 }
 
 export interface ClienteResposta {
@@ -229,4 +247,48 @@ export interface RastreioResposta {
   motoboy: { primeiroNome: string } | null;
   /** Posição do entregador ao vivo pelo WebSocket: só em rota de entrega. */
   aoVivo: boolean;
+  /** Ponto de entrega, para desenhar o destino e estimar a chegada. Só em rota. */
+  destino: Coordenadas | null;
+  /** Entregue e ainda sem nota: a página oferece as estrelas. */
+  podeAvaliar: boolean;
+  avaliacao: { nota: number; comentario: string | null } | null;
+}
+
+// Indicadores ------------------------------------------------------------------
+
+export interface IndicadoresMotoboy {
+  vinculoId: string;
+  nome: string;
+  entregues: number;
+  devolvidos: number;
+  /** Da criação do pedido até a entrega, em minutos. */
+  tempoMedioMin: number | null;
+  notaMedia: number | null;
+  avaliacoes: number;
+}
+
+/** GET /empresas/:empresaId/indicadores?dias=1|7|30 */
+export interface IndicadoresResposta {
+  periodo: { dias: number; inicio: string; fim: string };
+  /** Fotografia deste instante, independente do período. */
+  agora: { emAndamento: number; semMotoboy: number; emRota: number; atencao: number; motoboysEmTurno: number };
+  totais: {
+    entregues: number;
+    devolvidos: number;
+    cancelados: number;
+    /** Entregues ÷ (entregues + devolvidos); null sem nenhum dos dois. */
+    taxaSucesso: number | null;
+    tempoMedioEntregaMin: number | null;
+    /** Somente pedidos entregues. */
+    valorCobradoCentavos: number;
+    taxasEntregaCentavos: number;
+  };
+  /** O período imediatamente anterior, do mesmo tamanho, para comparar. */
+  anterior: { entregues: number; tempoMedioEntregaMin: number | null };
+  porDia: { dia: string; entregues: number; naoEntregues: number }[];
+  /** Pedidos criados por hora do dia (0 a 23), para enxergar o pico. */
+  porHora: { hora: number; pedidos: number }[];
+  motoboys: IndicadoresMotoboy[];
+  pagamentos: { forma: FormaPagamento; pedidos: number; valorCentavos: number }[];
+  avaliacoes: { media: number | null; total: number; porNota: number[] };
 }

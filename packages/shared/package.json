@@ -10,7 +10,8 @@
     "./dinheiro": "./src/dinheiro.ts",
     "./validacao": "./src/validacao.ts",
     "./privacidade": "./src/privacidade.ts",
-    "./localizacao": "./src/localizacao.ts"
+    "./localizacao": "./src/localizacao.ts",
+    "./despacho": "./src/despacho.ts"
   },
   "scripts": {
     "test": "vitest run",

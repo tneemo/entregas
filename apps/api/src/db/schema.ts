@@ -2,10 +2,10 @@
 //
 // Regra multi-tenant: toda tabela com dados de uma empresa tem `empresa_id`
 // e só é acessada pelos escopos em src/dados/escopo-*.ts.
-// Tabelas globais: cidades, empresas, usuarios, sessoes, dispositivos, falhas_login.
+// Tabelas globais: cidades, empresas, usuarios, sessoes, dispositivos, falhas_login, idempotencia.
 
 import { sql } from 'drizzle-orm';
-import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import {
   ACOES_PEDIDO,
   FORMAS_PAGAMENTO,
@@ -254,6 +254,9 @@ export const pedidos = sqliteTable(
     uniqueIndex('pedidos_token_rastreio_unq').on(t.tokenRastreio),
     index('pedidos_empresa_status_idx').on(t.empresaId, t.status),
     index('pedidos_motoboy_status_idx').on(t.motoboyVinculoId, t.status),
+    // Histórico e indicadores leem por período dentro da empresa.
+    index('pedidos_empresa_concluido_idx').on(t.empresaId, t.concluidoEm),
+    index('pedidos_empresa_criado_idx').on(t.empresaId, t.criadoEm),
     // O cron de cada minuto só olha os pedidos esperando aceite com prazo.
     index('pedidos_aceite_ate_idx').on(t.aceiteAte).where(sql`aceite_ate IS NOT NULL`),
   ],
@@ -377,4 +380,48 @@ export const fotosPedido = sqliteTable(
     criadoEm: criadoEm(),
   },
   (t) => [index('fotos_pedido_idx').on(t.pedidoId)],
+);
+
+/** Nota do destinatário, dada pelo link de acompanhamento depois da entrega. Uma por pedido. */
+export const avaliacoes = sqliteTable(
+  'avaliacoes',
+  {
+    id: id(),
+    empresaId: text('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    pedidoId: text('pedido_id')
+      .notNull()
+      .references(() => pedidos.id),
+    /** 1 a 5 estrelas. */
+    nota: integer('nota').notNull(),
+    comentario: text('comentario'),
+    criadoEm: criadoEm(),
+  },
+  (t) => [
+    uniqueIndex('avaliacoes_pedido_unq').on(t.pedidoId),
+    index('avaliacoes_empresa_idx').on(t.empresaId, t.criadoEm),
+  ],
+);
+
+/**
+ * Chaves de idempotência (cabeçalho Idempotency-Key): a resposta da primeira requisição
+ * fica guardada por 24 h, e repetir a mesma chave devolve a mesma resposta sem executar
+ * de novo. É o que deixa o app repetir "entregar" depois de uma queda de sinal sem medo.
+ */
+export const idempotencia = sqliteTable(
+  'idempotencia',
+  {
+    usuarioId: text('usuario_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    chave: text('chave').notNull(),
+    /** Método e caminho da primeira requisição: a mesma chave em outra rota é erro de quem chamou. */
+    rota: text('rota').notNull(),
+    /** null enquanto a primeira requisição ainda está em andamento. */
+    status: integer('status'),
+    corpo: text('corpo'),
+    criadoEm: criadoEm(),
+  },
+  (t) => [primaryKey({ columns: [t.usuarioId, t.chave] }), index('idempotencia_criado_idx').on(t.criadoEm)],
 );

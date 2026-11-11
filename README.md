@@ -45,6 +45,44 @@ curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"
 No primeiro acesso, abra **/configuracao-inicial** e use o `SETUP_TOKEN` do `.dev.vars` para criar o super admin.
 Depois: cadastre uma empresa, envie o link de convite ao administrador dela, e ele convida despachantes e motoboys.
 
+## Demonstração com dados
+
+Para ver o painel cheio (duas semanas de entregas, avaliações, motoboys andando no mapa) sem tocar no seu banco
+de desenvolvimento. A demonstração usa um banco local separado, em `apps/api/.wrangler/demo`:
+
+```bash
+npm run demo:preparar -w @entregas/api
+```
+
+```bash
+npm run dev:demo -w @entregas/api
+```
+
+```bash
+npm run dev -w @entregas/painel
+```
+
+```bash
+npm run demo -w @entregas/api
+```
+
+O último comando cria a empresa e os pedidos, mostra as contas para entrar (a senha fica em
+`apps/api/scripts/demo.mjs`) e continua movendo os motoboys até Ctrl+C. Só funciona em banco vazio: para
+recomeçar, apague `apps/api/.wrangler/demo` e prepare de novo.
+
+## O que o painel faz além da fila
+
+- **Despacho sugerido**: em cada pedido aguardando, um botão chama o motoboy em turno mais perto da coleta e com
+  menos entregas (cálculo em `packages/shared/src/despacho.ts`, refeito a cada posição nova).
+- **Visão geral** (menu): números de agora e do período (hoje, 7 ou 30 dias), entregas por dia, pico por hora,
+  desempenho por motoboy, valores cobrados e nota dos clientes.
+- **Histórico e busca**: pedidos concluídos de qualquer dia e busca por número, nome ou telefone.
+- **Ctrl+K** abre a busca rápida (telas e pedidos); **N** cria um pedido.
+- **Avisos em tempo real** quando um pedido não é entregue, volta para a fila ou é concluído, com som opcional
+  (sino no rodapé do menu) e contagem de pendências no título da aba.
+- **Tema escuro** (lua/sol no rodapé do menu; sem escolha, segue o sistema).
+- **Link do cliente**: previsão de chegada, destino no mapa e avaliação com estrelas depois da entrega.
+
 ## App do motoboy (apps/motoboy, Expo)
 
 Para testar telas e fluxo no navegador (sem GPS em segundo plano nem câmera de verdade):
@@ -91,6 +129,12 @@ npm run lint:corrigir
 
 O lint também protege o isolamento entre empresas: em `apps/api/src`, só `src/dados` (e `src/db`) pode importar
 tabelas com `empresa_id` do esquema. Rotas e middlewares chamam funções dos escopos.
+
+Requisições que mudam algo aceitam o cabeçalho `Idempotency-Key` (8 a 128 letras, números, `-` ou `_`): repetir a
+mesma chave em até 24 h devolve a primeira resposta sem executar de novo. O painel usa ao criar pedido e o app ao
+registrar ações (com até 3 tentativas automáticas quando o sinal cai). Toda resposta leva `x-request-id` e
+`server-timing`; em homologação e produção cada requisição gera uma linha de log com o padrão da rota (nunca o
+token da URL).
 
 Os testes da API rodam dentro do runtime dos Workers (`@cloudflare/vitest-plugin`) com um D1 local.
 `apps/api/test/isolamento.test.ts` garante que uma empresa não lê nem altera dados de outra:

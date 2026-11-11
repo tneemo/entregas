@@ -284,3 +284,15 @@ export const schemaPosicoes = z.object({
 });
 
 export type DadosPosicoes = z.input<typeof schemaPosicoes>;
+
+/** Nota do destinatário pelo link de acompanhamento, depois da entrega. */
+export const schemaAvaliacao = z.object({
+  nota: z.number().int().min(1, 'Escolha de 1 a 5 estrelas.').max(5, 'Escolha de 1 a 5 estrelas.'),
+  comentario: textoOpcional(500),
+});
+
+export type DadosAvaliacao = z.input<typeof schemaAvaliacao>;
+
+/** Períodos oferecidos na visão geral (dias, contando hoje). */
+export const PERIODOS_INDICADORES = [1, 7, 30] as const;
+export type PeriodoIndicadores = (typeof PERIODOS_INDICADORES)[number];

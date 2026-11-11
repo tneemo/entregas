@@ -16,7 +16,7 @@ import {
   type PedidoDetalhe,
   type TipoFoto,
 } from '@entregas/shared';
-import { api, ErroDaApi } from '../../src/api.ts';
+import { api, apiComRepeticao, ErroDaApi, novaChave } from '../../src/api.ts';
 import { Aviso, Botao, Campo, Secao, SeloStatus } from '../../src/componentes.tsx';
 import { enviarFoto, tirarFoto } from '../../src/foto.ts';
 import { posicaoAtual } from '../../src/rastreio.ts';
@@ -235,6 +235,9 @@ export default function Entrega() {
   const [concluido, setConcluido] = useState<PedidoDetalhe | null>(null);
   // Errar o código e tentar de novo não reenvia a mesma foto.
   const fotoEnviada = useRef<string | null>(null);
+  // A mesma ação com os mesmos dados usa a mesma chave até dar certo: tocar de novo depois
+  // de "sem conexão" não registra a entrega duas vezes.
+  const tentativa = useRef<{ assinatura: string; chave: string } | null>(null);
 
   const pedido = useQuery({
     queryKey: ['pedido', empresaId, pedidoId],
@@ -262,12 +265,16 @@ export default function Entrega() {
         }
       }
       const posicao = await posicaoAtual();
-      return api<PedidoDetalhe>(`/empresas/${empresaId}/pedidos/${pedidoId}/acoes/${acao}`, {
+      const assinatura = `${acao}:${JSON.stringify(dados)}`;
+      if (tentativa.current?.assinatura !== assinatura) tentativa.current = { assinatura, chave: novaChave() };
+      return apiComRepeticao<PedidoDetalhe>(`/empresas/${empresaId}/pedidos/${pedidoId}/acoes/${acao}`, {
         metodo: 'POST',
         corpo: { ...dados, ...posicao },
+        chave: tentativa.current.chave,
       });
     },
     onSuccess: (atualizado) => {
+      tentativa.current = null;
       setAberta(null);
       consultas.invalidateQueries({ queryKey: ['entregas', empresaId] });
       // Recusado ou concluído: o pedido sai da lista do motoboy.

@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "wrangler dev --port 8787 --test-scheduled",
     "dev:rede": "wrangler dev --port 8787 --ip 0.0.0.0 --test-scheduled",
+    "dev:demo": "wrangler dev --port 8787 --test-scheduled --persist-to .wrangler/demo",
+    "demo:preparar": "wrangler d1 migrations apply DB --local --persist-to .wrangler/demo",
+    "demo": "node scripts/demo.mjs",
     "db:gerar": "drizzle-kit generate",
     "db:migrar:local": "wrangler d1 migrations apply DB --local",
     "tipos": "wrangler types",

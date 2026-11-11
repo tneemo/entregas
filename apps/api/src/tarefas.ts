@@ -3,6 +3,7 @@
 import { criarDb } from './db/index.ts';
 import { expurgarPosicoes } from './dados/escopo-turno.ts';
 import { expirarAceites } from './dados/escopo-pedidos.ts';
+import { expurgarIdempotencia } from './dados/idempotencia.ts';
 import { central } from './central/avisar.ts';
 import { avisos, notificar } from './notificacoes.ts';
 
@@ -13,6 +14,13 @@ export const CRONS = { expurgoGps: '0 6 * * *', prazoAceite: '* * * * *' } as co
 export async function expurgarGps(env: Env) {
   const apagados = await expurgarPosicoes(criarDb(env.DB));
   console.log(`GPS expurgado: ${apagados} pontos`);
+}
+
+/** Limpeza diária: GPS antigo (LGPD) e chaves de idempotência vencidas. */
+export async function manutencaoDiaria(env: Env) {
+  await expurgarGps(env);
+  const chaves = await expurgarIdempotencia(criarDb(env.DB));
+  console.log(`Idempotência: ${chaves} chave(s) vencida(s) apagada(s)`);
 }
 
 /** Pedidos sem aceite no prazo voltam para a fila; o painel de cada empresa fica sabendo na hora. */
@@ -37,7 +45,7 @@ export async function vencerPrazosDeAceite(env: Env) {
 }
 
 export function executarCron(cron: string, env: Env): Promise<unknown> {
-  if (cron === CRONS.expurgoGps) return expurgarGps(env);
+  if (cron === CRONS.expurgoGps) return manutencaoDiaria(env);
   if (cron === CRONS.prazoAceite) return vencerPrazosDeAceite(env);
   console.error(`cron sem tarefa: ${cron}`);
   return Promise.resolve();

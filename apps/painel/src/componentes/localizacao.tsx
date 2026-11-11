@@ -106,7 +106,7 @@ export function LocalizacaoEndereco({
   return (
     <div className="flex flex-col gap-2 sm:col-span-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className={`border-l-4 bg-white px-3 py-1.5 text-sm ${aviso.cor}`} role="status">
+        <p className={`border-l-4 bg-superficie px-3 py-1.5 text-sm ${aviso.cor}`} role="status">
           {aviso.texto}
         </p>
         {pronto && busca !== 'buscando' && (

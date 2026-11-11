@@ -1,18 +1,82 @@
 @import "tailwindcss";
 
+/*
+ * Identidade: a placa de moto (faixa azul Mercosul, caracteres vermelhos da categoria
+ * aluguel) sobre asfalto. As cores têm nome de coisa da rua; o tema escuro troca os
+ * valores, nunca os nomes, então as telas não sabem em que tema estão.
+ */
 @theme {
   --font-sans: "Barlow", system-ui, sans-serif;
   --font-cond: "Barlow Condensed", "Barlow", system-ui, sans-serif;
 
-  --color-papel: #f4f6f8;
+  /* Fundo da página, cartões e fundo sutil (hover, trilhos). */
+  --color-papel: #f3f5f7;
+  --color-superficie: #ffffff;
+  --color-relevo: #e8ecef;
+  /* Texto principal, texto de apoio e divisórias. */
   --color-asfalto: #1e2529;
-  --color-concreto: #5f6b73;
+  --color-concreto: #5a666e;
   --color-linha: #d5dbe0;
+  /* Marca e situações. */
   --color-mercosul: #0b3d91;
   --color-mercosul-escuro: #082c69;
   --color-aluguel: #b3122a;
   --color-sinal: #e5a50a;
   --color-ok: #1f7a4d;
+  /* Texto sobre fundo preenchido de marca (botão principal, selo "em rota"). */
+  --color-contraste: #ffffff;
+  /* Barra lateral: asfalto nos dois temas. */
+  --color-pista: #1a2024;
+  --color-pista-relevo: #2a3237;
+  --color-pista-texto: #e3e8eb;
+  --color-pista-apoio: #9aa6ae;
+  /* Séries dos gráficos (validadas para daltonismo nos dois temas). */
+  --color-grafico-1: #1f5fc0;
+  --color-grafico-2: #c4364c;
+
+  --shadow-flutuante: 0 12px 32px -8px rgb(15 20 25 / 0.28), 0 2px 6px rgb(15 20 25 / 0.12);
+
+  --animate-entrar: entrar 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-pulso: pulso 1.6s ease-in-out infinite;
+  --animate-brilho: brilho 1.4s linear infinite;
+
+  @keyframes entrar {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+  @keyframes pulso {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @keyframes brilho {
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+  --color-papel: #0f1316;
+  --color-superficie: #181d21;
+  --color-relevo: #232b30;
+  --color-asfalto: #e6ebee;
+  --color-concreto: #9aa6ae;
+  --color-linha: #2c363c;
+  --color-mercosul: #86b2ff;
+  --color-mercosul-escuro: #a9c8ff;
+  --color-aluguel: #ff8695;
+  --color-sinal: #f0bb3f;
+  --color-ok: #56c794;
+  --color-contraste: #0c1114;
+  --color-pista: #0a0d0f;
+  --color-pista-relevo: #1a2126;
+  --color-grafico-1: #4f8fe8;
+  --color-grafico-2: #e0566b;
+  --shadow-flutuante: 0 12px 32px -8px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.06);
 }
 
 @layer base {
@@ -21,6 +85,7 @@
     color: var(--color-asfalto);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    color-scheme: light;
   }
 
   h1,
@@ -36,6 +101,10 @@
     outline-offset: 2px;
   }
 
+  ::selection {
+    background: color-mix(in srgb, var(--color-mercosul) 25%, transparent);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -48,8 +117,28 @@
   }
 }
 
-/* Marcador do motoboy no mapa: pino azul com o nome numa etiqueta, como a placa. */
 @layer components {
+  /* Faixa tracejada de pista: a divisória da barra lateral. */
+  .faixa-de-pista {
+    height: 3px;
+    background: repeating-linear-gradient(90deg, var(--color-sinal) 0 18px, transparent 18px 32px);
+    opacity: 0.85;
+  }
+
+  /* Bloco carregando: mesma forma do conteúdo que vai chegar. */
+  .esqueleto {
+    border-radius: 6px;
+    background: linear-gradient(
+      90deg,
+      var(--color-relevo) 25%,
+      color-mix(in srgb, var(--color-relevo) 55%, var(--color-superficie)) 50%,
+      var(--color-relevo) 75%
+    );
+    background-size: 200% 100%;
+    animation: var(--animate-brilho);
+  }
+
+  /* Marcador do motoboy no mapa: pino azul com o nome numa etiqueta, como a placa. */
   .marcador-moto {
     position: relative;
     width: 0;
@@ -58,24 +147,45 @@
 
   .marcador-moto__pino {
     position: absolute;
-    left: -9px;
-    top: -9px;
-    width: 18px;
-    height: 18px;
+    left: -10px;
+    top: -10px;
+    width: 20px;
+    height: 20px;
     border-radius: 9999px;
-    background: var(--color-mercosul);
+    background: #0b3d91;
     border: 3px solid #fff;
     box-shadow:
-      0 0 0 1px var(--color-asfalto),
-      0 1px 4px rgb(0 0 0 / 0.35);
+      0 0 0 1px #1e2529,
+      0 2px 6px rgb(0 0 0 / 0.4);
   }
 
-  .marcador-moto__nome {
+  /* Quem está transmitindo agora pulsa de leve. */
+  .marcador-moto:not(.marcador-moto--atrasado) .marcador-moto__pino::after {
+    content: "";
     position: absolute;
-    left: 14px;
-    top: -12px;
+    inset: -9px;
+    border-radius: 9999px;
+    border: 2px solid #0b3d91;
+    opacity: 0;
+    animation: radar 2.4s ease-out infinite;
+  }
+
+  @keyframes radar {
+    0% {
+      transform: scale(0.5);
+      opacity: 0.7;
+    }
+    100% {
+      transform: scale(1.3);
+      opacity: 0;
+    }
+  }
+
+  .marcador-moto__nome,
+  .marcador-ponto__nome {
+    position: absolute;
     white-space: nowrap;
-    border: 1.5px solid var(--color-asfalto);
+    border: 1.5px solid #1e2529;
     border-radius: 4px;
     background: #fff;
     padding: 1px 6px;
@@ -83,17 +193,22 @@
     font-size: 14px;
     font-weight: 600;
     line-height: 1.3;
-    color: var(--color-asfalto);
-    box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+    color: #1e2529;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  }
+
+  .marcador-moto__nome {
+    left: 15px;
+    top: -12px;
   }
 
   .marcador-moto--atrasado .marcador-moto__pino {
-    background: var(--color-concreto);
+    background: #5a666e;
   }
 
   .marcador-moto--atrasado .marcador-moto__nome {
-    color: var(--color-concreto);
-    border-color: var(--color-concreto);
+    color: #5a666e;
+    border-color: #5a666e;
   }
 
   /* Pino de endereço: a ponta fica exatamente no ponto (âncora 0,0). */
@@ -111,28 +226,40 @@
     height: 24px;
     border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
-    background: var(--color-aluguel);
+    background: #b3122a;
     border: 3px solid #fff;
     box-shadow:
-      0 0 0 1px var(--color-asfalto),
+      0 0 0 1px #1e2529,
       0 1px 4px rgb(0 0 0 / 0.35);
   }
 
   .marcador-ponto--coleta .marcador-ponto__pino {
-    background: var(--color-asfalto);
+    background: #1e2529;
+  }
+
+  /* Pedido esperando motoboy: âmbar, a mesma cor da fila. */
+  .marcador-ponto--espera .marcador-ponto__pino {
+    background: #e5a50a;
   }
 
   .marcador-ponto__nome {
-    position: absolute;
     left: 16px;
     top: -34px;
-    white-space: nowrap;
-    border: 1.5px solid var(--color-asfalto);
-    border-radius: 4px;
-    background: #fff;
-    padding: 1px 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-asfalto);
+  }
+
+  /* Tema escuro: os azulejos do mapa vêm claros; invertê-los mantém as ruas legíveis. */
+  :root[data-tema="escuro"] .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6);
+  }
+
+  :root[data-tema="escuro"] .leaflet-container {
+    background: #14191c;
+  }
+
+  :root[data-tema="escuro"] .leaflet-control-attribution,
+  :root[data-tema="escuro"] .leaflet-bar a {
+    background: #181d21;
+    color: #9aa6ae;
+    border-color: #2c363c;
   }
 }

@@ -25,17 +25,24 @@ export interface Marcador {
   latitude: number;
   longitude: number;
   rotulo: string;
-  /** moto: posição ao vivo (bolinha); coleta e entrega: pino do endereço. */
-  tipo?: 'moto' | 'coleta' | 'entrega';
+  /** moto: posição ao vivo (bolinha); coleta e entrega: pino do endereço; espera: pedido sem motoboy. */
+  tipo?: 'moto' | 'coleta' | 'entrega' | 'espera';
   /** Sem posição nova há algum tempo: aparece apagado. */
   atrasado?: boolean;
   /** Raio de precisão do GPS, em metros. */
   precisao?: number | null;
 }
 
+/** Trajeto em linha reta entre dois pontos (ex.: do motoboy até a entrega dele). */
+export interface Linha {
+  id: string;
+  de: Coordenadas;
+  para: Coordenadas;
+}
+
 function icone(m: Pick<Marcador, 'rotulo' | 'tipo' | 'atrasado'>) {
   // Montado com textContent: o nome vem do cadastro e não pode virar HTML.
-  const ponto = m.tipo === 'coleta' || m.tipo === 'entrega';
+  const ponto = m.tipo !== undefined && m.tipo !== 'moto';
   const base = ponto ? 'marcador-ponto' : 'marcador-moto';
   const variante = ponto ? `${base}--${m.tipo}` : m.atrasado ? `${base}--atrasado` : '';
   const raiz = document.createElement('div');
@@ -51,15 +58,20 @@ function icone(m: Pick<Marcador, 'rotulo' | 'tipo' | 'atrasado'>) {
 
 export function Mapa({
   marcadores,
+  linhas,
+  aoClicar,
   foco,
   seguir = false,
   rotulo,
   className = '',
 }: {
   marcadores: Marcador[];
+  linhas?: Linha[];
+  /** Clique num marcador (ex.: abrir o pedido daquele pino). */
+  aoClicar?: (id: string) => void;
   /** Marcador para centralizar (ex.: clicou no nome na lista). Objeto novo a cada clique. */
   foco?: { id: string } | null;
-  /** Acompanha o único marcador quando ele anda (página de rastreio). */
+  /** Mantém todos os marcadores na tela quando algum anda (página de rastreio). */
   seguir?: boolean;
   /** Descrição para leitores de tela. */
   rotulo: string;
@@ -68,7 +80,11 @@ export function Mapa({
   const elemento = useRef<HTMLElement>(null);
   const mapa = useRef<L.Map | null>(null);
   const camadas = useRef(new Map<string, { marcador: L.Marker; circulo: L.Circle | null; chave: string }>());
+  const tracos = useRef(new Map<string, L.Polyline>());
   const enquadrou = useRef(false);
+  // O Leaflet guarda o callback da criação do marcador; a ref mantém sempre o mais novo.
+  const clicar = useRef(aoClicar);
+  clicar.current = aoClicar;
 
   useEffect(() => {
     if (!elemento.current) return;
@@ -76,10 +92,12 @@ export function Mapa({
     camadaDeRuas(m);
     mapa.current = m;
     const atuais = camadas.current;
+    const tracosAtuais = tracos.current;
     return () => {
       m.remove();
       mapa.current = null;
       atuais.clear();
+      tracosAtuais.clear();
       enquadrou.current = false;
     };
   }, []);
@@ -102,6 +120,7 @@ export function Mapa({
         existente.circulo?.setLatLng(posicao).setRadius(dado.precisao ?? 0);
       } else {
         const marcador = L.marker(posicao, { icon: icone(dado), keyboard: false, title: dado.rotulo }).addTo(m);
+        marcador.on('click', () => clicar.current?.(dado.id));
         const circulo =
           dado.precisao != null
             ? L.circle(posicao, { radius: dado.precisao, color: '#0b3d91', weight: 1, fillOpacity: 0.08 }).addTo(m)
@@ -127,8 +146,40 @@ export function Mapa({
         });
     } else if (seguir && marcadores.length === 1) {
       m.panTo([marcadores[0]!.latitude, marcadores[0]!.longitude]);
+    } else if (seguir && marcadores.length > 1) {
+      // Alguém saiu da área visível: reenquadra para caber todo mundo.
+      const todos = L.latLngBounds(marcadores.map((d) => [d.latitude, d.longitude]));
+      if (!m.getBounds().pad(-0.1).contains(todos)) m.fitBounds(todos, { padding: [48, 48], maxZoom: 16 });
     }
   }, [marcadores, seguir]);
+
+  useEffect(() => {
+    const m = mapa.current;
+    if (!m) return;
+    const vistos = new Set<string>();
+    for (const linha of linhas ?? []) {
+      vistos.add(linha.id);
+      const pontos: L.LatLngTuple[] = [
+        [linha.de.latitude, linha.de.longitude],
+        [linha.para.latitude, linha.para.longitude],
+      ];
+      const existente = tracos.current.get(linha.id);
+      if (existente) existente.setLatLngs(pontos);
+      else {
+        tracos.current.set(
+          linha.id,
+          L.polyline(pontos, { color: '#2a6bd1', weight: 3, opacity: 0.7, dashArray: '2 9', interactive: false }).addTo(
+            m,
+          ),
+        );
+      }
+    }
+    for (const [id, traco] of tracos.current) {
+      if (vistos.has(id)) continue;
+      traco.remove();
+      tracos.current.delete(id);
+    }
+  }, [linhas]);
 
   useEffect(() => {
     const alvo = foco ? camadas.current.get(foco.id) : undefined;

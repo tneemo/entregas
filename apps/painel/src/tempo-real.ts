@@ -4,13 +4,29 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import type { MensagemCentral, PosicaoMotoboy } from '@entregas/shared';
+import type { MensagemCentral, PedidoResumo, PosicaoMotoboy } from '@entregas/shared';
+import { avisar } from './avisos.tsx';
 
 export type SituacaoConexao = 'desligado' | 'conectando' | 'ao_vivo' | 'reconectando';
 
 export interface EstadoAoVivo {
   conexao: SituacaoConexao;
   motoboys: Readonly<Record<string, PosicaoMotoboy>>;
+}
+
+// O que a própria pessoa acabou de fazer nesta aba não precisa virar aviso para ela.
+const silenciados = new Map<string, number>();
+
+/** Chame antes de uma ação no pedido (ou com "novo", antes de criar um). */
+export function silenciarAviso(chave: string, ms = 8_000) {
+  silenciados.set(chave, Date.now() + ms);
+}
+
+function silenciado(chave: string) {
+  const ate = silenciados.get(chave);
+  if (ate && ate > Date.now()) return true;
+  silenciados.delete(chave);
+  return false;
 }
 
 const DESLIGADO: EstadoAoVivo = { conexao: 'desligado', motoboys: {} };
@@ -110,6 +126,47 @@ class CentralAoVivo {
     });
   }
 
+  /**
+   * Mudança que a central precisa ver na hora, vinda de outra pessoa: o motoboy não
+   * entregou, não aceitou, entregou; ou chegou pedido novo. Compara com a fila que já
+   * está na tela para saber de onde o pedido veio.
+   */
+  private avisarMudanca(m: Extract<MensagemCentral, { tipo: 'pedido' }>) {
+    const fila = this.consultas.getQueryData<PedidoResumo[]>(['pedidos', this.empresaId, 'ativos']);
+    if (!fila) return;
+    const antes = fila.find((p) => p.id === m.pedidoId);
+    if (silenciado(m.pedidoId) || (!antes && silenciado('novo'))) return;
+    const link = { para: `/e/${this.empresaId}/pedidos/${m.pedidoId}`, rotulo: 'Abrir pedido' };
+
+    if (!antes) {
+      if (m.status === 'pendente') avisar({ tipo: 'info', titulo: 'Pedido novo na fila', link });
+      return;
+    }
+    if (antes.status === m.status) return;
+    const pedido = `Pedido ${antes.numero}`;
+    const motoboy = antes.motoboy?.nome.split(' ')[0];
+    if (m.status === 'falhou') {
+      avisar({
+        tipo: 'problema',
+        titulo: `${pedido} não foi entregue`,
+        texto: 'Veja o motivo e decida: tentar de novo ou devolver.',
+        link,
+      });
+    } else if (m.status === 'pendente') {
+      avisar({
+        tipo: 'atencao',
+        titulo: `${pedido} voltou para a fila`,
+        texto:
+          antes.status === 'atribuido'
+            ? `${motoboy ?? 'O motoboy'} não aceitou. Escolha outro motoboy.`
+            : 'Foi retirado do motoboy.',
+        link,
+      });
+    } else if (m.status === 'entregue') {
+      avisar({ tipo: 'sucesso', titulo: `${pedido} entregue`, texto: motoboy ? `Por ${motoboy}.` : undefined });
+    }
+  }
+
   private receber(m: MensagemCentral) {
     switch (m.tipo) {
       case 'motoboys':
@@ -126,6 +183,7 @@ class CentralAoVivo {
         this.consultas.invalidateQueries({ queryKey: ['motoboys', this.empresaId] });
         break;
       case 'pedido':
+        this.avisarMudanca(m);
         this.atualizarConsultas(m.pedidoId);
         break;
     }

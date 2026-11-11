@@ -30,6 +30,8 @@ describe('isolamento entre empresas', () => {
       cliente.delete(`${B}/convites/${conviteB.id}`),
       cliente.patch(`${B}/membros/${b.motoboy.eu.vinculos[0].vinculoId}`, { status: 'suspenso' }),
       cliente.get(`${B}/central/posicoes`),
+      cliente.get(`${B}/indicadores`),
+      cliente.get(`${B}/pedidos?busca=ana`),
       cliente.post(`${B}/enderecos/localizar`, endereco()),
       cliente.req('GET', `${B}/central/ws`, undefined, { upgrade: 'websocket', 'sec-fetch-site': 'same-origin' }),
     ];

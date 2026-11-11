@@ -6,4 +6,5 @@ export * from './schemas.ts';
 export * from './rastreio.ts';
 export * from './privacidade.ts';
 export * from './localizacao.ts';
+export * from './despacho.ts';
 export type * from './api.ts';
