@@ -13,7 +13,7 @@
 import type { Endereco, Localizacao, PrecisaoLocalizacao } from '@entregas/shared';
 
 const TEMPO_MAXIMO_MS = 4000;
-const AGENTE = 'entregas-plataforma/1.0 (+https://entregas.joaopedropavanete.workers.dev)';
+const AGENTE = 'entregas-plataforma/1.0 (+https://entregas.tneemo.com)';
 
 type EnderecoBusca = Pick<Endereco, 'logradouro' | 'numero' | 'bairro' | 'cidade' | 'uf' | 'cep'>;
 

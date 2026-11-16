@@ -9,7 +9,7 @@
       "environment": "preview",
       "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://entregas-homologacao.joaopedropavanete.workers.dev",
+        "EXPO_PUBLIC_API_URL": "https://entregas-homologacao.tneemo.com",
         "EXPO_PUBLIC_AMBIENTE": "homologacao",
         "SENTRY_ALLOW_FAILURE": "true"
       }
@@ -19,7 +19,7 @@
       "environment": "production",
       "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://entregas.joaopedropavanete.workers.dev",
+        "EXPO_PUBLIC_API_URL": "https://entregas.tneemo.com",
         "EXPO_PUBLIC_AMBIENTE": "producao",
         "SENTRY_ALLOW_FAILURE": "true"
       }
