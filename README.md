@@ -113,6 +113,14 @@ npx eas-cli build -p android --profile homologacao
 
 O build roda na nuvem da Expo e termina com um link (e QR code) para baixar o APK no celular.
 
+Para usar as mesmas contas do site de produção (`https://entregas.tneemo.com`), gere com
+`npx eas-cli build -p android --profile teste`. Homologação tem banco e contas separados.
+O endereço da API fica gravado no APK durante o build: alterar `eas.json` só vale para APKs novos.
+Os endereços antigos `entregas.joaopedropavanete.workers.dev` e
+`entregas-homologacao.joaopedropavanete.workers.dev` precisam continuar ativos enquanto houver APKs
+que os utilizem. Por isso os dois ambientes declaram `workers_dev: true` no `wrangler.jsonc`,
+mesmo com domínio próprio; sem essa opção, adicionar `routes` desativa o endereço antigo no deploy.
+
 ## Verificar antes de subir
 
 Lint e formatação (Biome), tipos e testes, na mesma ordem do CI:

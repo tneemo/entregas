@@ -5,6 +5,8 @@ import { Aviso, Botao, Campo, Placa } from '../src/componentes.tsx';
 import { useSessao } from '../src/sessao.tsx';
 import { espaco, texto } from '../src/tema.ts';
 
+const homologacao = process.env.EXPO_PUBLIC_AMBIENTE === 'homologacao';
+
 export default function Entrar() {
   const { eu, entrar } = useSessao();
   const [login, setLogin] = useState('');
@@ -36,6 +38,11 @@ export default function Entrar() {
         <View style={{ gap: 4 }}>
           <Text style={texto.titulo}>App do motoboy</Text>
           <Text style={texto.apoio}>Entre com o celular ou CPF e a senha que você criou no convite.</Text>
+          {homologacao ? (
+            <Text style={texto.apoio}>
+              Ambiente de homologação. Use uma conta criada no site de homologação; as contas de produção são separadas.
+            </Text>
+          ) : null}
         </View>
         <Campo
           rotulo="Celular ou CPF"
