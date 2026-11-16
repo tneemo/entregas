@@ -153,8 +153,8 @@ npm run db:gerar -w @entregas/api
 | Ambiente | Endereço | Banco D1 / bucket R2 | Como é publicado |
 | --- | --- | --- | --- |
 | Desenvolvimento | http://localhost:5173 | local (`database_id` zerado; não troque) | `npm run dev` |
-| Homologação | https://entregas-homologacao.joaopedropavanete.workers.dev | `entregas-homologacao` / `entregas-fotos-homologacao` | sozinho, a cada push na `main` que passa no CI |
-| Produção | https://entregas.joaopedropavanete.workers.dev | `entregas` / `entregas-fotos` | à mão: GitHub → Actions → **Produção** → Run workflow |
+| Homologação | https://entregas-homologacao.tneemo.com | `entregas-homologacao` / `entregas-fotos-homologacao` | sozinho, a cada push na `main` que passa no CI |
+| Produção | https://entregas.tneemo.com | `entregas` / `entregas-fotos` | à mão: GitHub → Actions → **Produção** → Run workflow |
 
 Os ambientes ficam em `env` no `apps/api/wrangler.jsonc`. O GitHub Actions (`.github/workflows`) roda a
 verificação em todo PR e push; ao publicar, aplica as migrations do banco e depois o Worker (API + painel), e

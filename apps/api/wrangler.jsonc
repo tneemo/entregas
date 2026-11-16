@@ -79,6 +79,8 @@
         }
       ],
       "r2_buckets": [{ "binding": "FOTOS", "bucket_name": "entregas-fotos-homologacao" }],
+      // Domínio próprio (a zona tneemo.com precisa estar na mesma conta da Cloudflare; o DNS e o certificado saem sozinhos).
+      "routes": [{ "pattern": "entregas-homologacao.tneemo.com", "custom_domain": true }],
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "vars": {
         "AMBIENTE": "homologacao",
@@ -99,6 +101,8 @@
         }
       ],
       "r2_buckets": [{ "binding": "FOTOS", "bucket_name": "entregas-fotos" }],
+      // Domínio próprio. O endereço workers.dev continua no ar (APKs antigos usam), até migrarmos todos.
+      "routes": [{ "pattern": "entregas.tneemo.com", "custom_domain": true }],
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "vars": {
         "AMBIENTE": "producao",

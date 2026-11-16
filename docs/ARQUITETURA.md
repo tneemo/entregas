@@ -294,7 +294,7 @@ Monorepo com **npm workspaces**; TypeScript em tudo; testes com Vitest (`@cloudf
 
 - [ ] Confirmar com o **Transitar (Cascavel)** as exigências municipais de motofrete (alvará, cadastro do condutor, vistoria).
 - [ ] Nome da plataforma e domínio.
-- [x] Conta Cloudflare: API e painel publicados em `entregas.joaopedropavanete.workers.dev` (ambiente `producao`). Falta assinar o Workers Paid antes do piloto (o login gasta ~25 ms de CPU).
+- [x] Conta Cloudflare: API e painel publicados em `entregas.tneemo.com` (ambiente `producao`). Falta assinar o Workers Paid antes do piloto (o login gasta ~25 ms de CPU).
 - [ ] Conta Google Cloud com faturamento para as APIs de mapas.
 - [ ] Conta de desenvolvedor Google Play (ou piloto com APK). Desde 30/09/2026 o Brasil exige verificação de desenvolvedor: registrar o pacote `br.com.entregas.motoboy` no Android Developer Console mesmo distribuindo APK.
 - [ ] Token da Cloudflare no GitHub (`CLOUDFLARE_API_TOKEN`) para o CI publicar; ver README.
