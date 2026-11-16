@@ -105,13 +105,23 @@ No celular Android, na mesma rede Wi-Fi do computador:
 
 O Expo Go roda quase tudo, mas **não faz GPS com a tela apagada**. Para testar de verdade, gere um APK
 pela Expo (conta gratuita), dentro de `apps/motoboy`. O perfil `homologacao` fala com a homologação;
-o perfil `teste` fala com a produção (endereços em `apps/motoboy/eas.json`):
+o perfil `producao` fala com a produção (endereços em `apps/motoboy/eas.json`). Para usar as contas de
+`https://entregas.tneemo.com`, gere o APK de produção:
 
 ```bash
-npx eas-cli build -p android --profile homologacao
+npx eas-cli build -p android --profile producao
 ```
 
 O build roda na nuvem da Expo e termina com um link (e QR code) para baixar o APK no celular.
+
+Para testar com contas separadas, use `--profile homologacao`. Homologação tem banco próprio e não
+aceita as contas de produção. O perfil antigo `teste` continua como alias de `producao` para
+compatibilidade; prefira os nomes explícitos `producao` e `homologacao` nos novos builds.
+O endereço da API fica gravado no APK durante o build: alterar `eas.json` só vale para APKs novos.
+Os endereços antigos `entregas.joaopedropavanete.workers.dev` e
+`entregas-homologacao.joaopedropavanete.workers.dev` precisam continuar ativos enquanto houver APKs
+que os utilizem. Por isso os dois ambientes declaram `workers_dev: true` no `wrangler.jsonc`,
+mesmo com domínio próprio; sem essa opção, adicionar `routes` desativa o endereço antigo no deploy.
 
 ## Verificar antes de subir
 
@@ -214,7 +224,7 @@ npx eas-cli env:create --name GOOGLE_SERVICES_JSON --type file --value ./google-
 npx eas-cli credentials -p android
 ```
 
-4. Gere um APK novo (`--profile homologacao` ou `teste`). Ao entrar, o app pede permissão de notificação.
+4. Gere um APK novo (`--profile homologacao` ou `producao`). Ao entrar, o app pede permissão de notificação.
 
 Se o projeto no Expo exigir token para enviar (*Enhanced Security for Push Notifications*), guarde-o no Worker
 com `npx wrangler secret put EXPO_ACCESS_TOKEN --env <ambiente>`.

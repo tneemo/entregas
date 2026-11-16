@@ -67,6 +67,9 @@
   "env": {
     "homologacao": {
       "name": "entregas-homologacao",
+      // APKs anteriores ao domínio próprio ainda usam este endereço.
+      "workers_dev": true,
+      "preview_urls": false,
       "durable_objects": {
         "bindings": [{ "name": "CENTRAL", "class_name": "CentralEmpresa" }]
       },
@@ -89,6 +92,9 @@
     },
     "producao": {
       "name": "entregas",
+      // Declarar routes desativa workers.dev por padrão; os APKs antigos ainda precisam dele.
+      "workers_dev": true,
+      "preview_urls": false,
       "durable_objects": {
         "bindings": [{ "name": "CENTRAL", "class_name": "CentralEmpresa" }]
       },
