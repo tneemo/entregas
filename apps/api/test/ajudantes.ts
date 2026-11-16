@@ -128,7 +128,7 @@ export class Conexao {
   }
 }
 
-/** Super admin inserido direto no banco (o fluxo de /setup tem teste próprio). */
+/** Super admin inserido direto no banco (como faz scripts/super-admin.mjs). */
 export async function novoSuperAdmin() {
   const email = `super-${sufixo()}@teste.local`;
   await criarDb(env.DB)

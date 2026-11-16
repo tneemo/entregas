@@ -8,7 +8,6 @@ import { protegerCsrf } from './middleware/csrf.ts';
 import { carregarSessao } from './middleware/sessao.ts';
 import { idempotencia } from './middleware/idempotencia.ts';
 import { observabilidade } from './middleware/observabilidade.ts';
-import { rotasSetup } from './rotas/setup.ts';
 import { rotasAuth } from './rotas/auth.ts';
 import { rotasAdmin } from './rotas/admin.ts';
 import { rotasEmpresa } from './rotas/empresa.ts';
@@ -51,7 +50,6 @@ app.use(carregarSessao);
 app.use(idempotencia);
 
 app.get('/saude', (c) => c.json({ ok: true }));
-app.route('/setup', rotasSetup);
 app.route('/auth', rotasAuth);
 app.route('/admin', rotasAdmin);
 app.route('/empresas/:empresaId/pedidos', rotasPedidos);

@@ -44,13 +44,6 @@ export const schemaEntrar = z.object({
   modo: z.enum(['cookie', 'token']).default('cookie'),
 });
 
-export const schemaSetup = z.object({
-  token: z.string().min(1),
-  nome,
-  email: campoEmail,
-  senha: campoSenha,
-});
-
 // Plataforma (super admin) --------------------------------------------------
 
 export const schemaCriarCidade = z.object({

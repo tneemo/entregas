@@ -42,7 +42,12 @@ O `wrangler dev` não dispara os crons sozinho. Para vencer na hora os prazos de
 curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"
 ```
 
-No primeiro acesso, abra **/configuracao-inicial** e use o `SETUP_TOKEN` do `.dev.vars` para criar o super admin.
+Para o primeiro acesso, crie o super admin direto no banco local (não existe tela nem rota para isso):
+
+```bash
+SENHA='uma-senha-forte' node apps/api/scripts/super-admin.mjs --env local --email voce@exemplo.com --nome "Seu Nome"
+```
+
 Depois: cadastre uma empresa, envie o link de convite ao administrador dela, e ele convida despachantes e motoboys.
 
 ## Demonstração com dados
@@ -188,11 +193,18 @@ npm run deploy:homologacao -w @entregas/api
 
 Para produção, os mesmos comandos com `producao` no lugar de `homologacao`.
 
-### Primeiro acesso de cada ambiente
+### Super admin (o primeiro e os seguintes)
 
-O primeiro super admin é criado na tela de configuração inicial do painel, com o segredo `SETUP_TOKEN`
-(`npx wrangler secret put SETUP_TOKEN --env homologacao`, ou `--env producao`). Depois disso ele não serve
-para mais nada e pode ser apagado com `npx wrangler secret delete SETUP_TOKEN --env <ambiente>`.
+Não há tela nem rota pública para criar super admin: seria uma porta aberta na internet. Quem tem acesso à conta da
+Cloudflare grava direto no D1, dentro de `apps/api`. A mesma linha cria a conta ou, se o e-mail já existe, só a promove:
+
+```bash
+SENHA='uma-senha-forte' node scripts/super-admin.mjs --env homologacao --email voce@exemplo.com --nome "Seu Nome"
+```
+
+Use `--env producao` para produção. A senha (mínimo 10 caracteres) vira hash no seu computador; só o hash vai ao banco.
+O segredo `SETUP_TOKEN` não existe mais: se ele ainda estiver em algum ambiente, apague com
+`npx wrangler secret delete SETUP_TOKEN --env <ambiente>`.
 
 ### Notificação no celular do motoboy (Firebase, uma vez)
 

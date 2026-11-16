@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router';
+import { Navigate, useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { EntrarResposta } from '@entregas/shared';
 import { api } from '../api.ts';
@@ -71,13 +71,6 @@ export function Entrar() {
         <p className="text-concreto">Para administradores e despachantes das empresas.</p>
       </div>
       <FormularioEntrar aoEntrar={() => navegar('/', { replace: true })} />
-      <p className="text-sm text-concreto">
-        Primeiro acesso à plataforma?{' '}
-        <Link to="/configuracao-inicial" className="text-mercosul underline">
-          Configure o super admin
-        </Link>
-        .
-      </p>
     </TelaPublica>
   );
 }

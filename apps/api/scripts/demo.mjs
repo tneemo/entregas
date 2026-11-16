@@ -5,11 +5,11 @@
 //   npm run dev:demo -w @entregas/api        (API usando esse banco; deixe rodando)
 //   npm run demo -w @entregas/api            (este script; fica movendo os motoboys até Ctrl+C)
 //
-// Só fala com http://localhost:8787 e só funciona em banco vazio (usa o SETUP_TOKEN do
-// .dev.vars para criar o super admin). As contas criadas aqui são fictícias.
+// Só fala com http://localhost:8787 e só funciona em banco vazio (cria o super admin direto no banco
+// local de demonstração com scripts/super-admin.mjs). As contas criadas aqui são fictícias.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -146,11 +146,6 @@ function corpoDoPedido(cliente, extras = {}) {
 }
 
 async function principal() {
-  const setupToken = readFileSync(join(RAIZ, '.dev.vars'), 'utf8')
-    .match(/^SETUP_TOKEN=(.+)$/m)?.[1]
-    ?.trim();
-  if (!setupToken) throw new Error('SETUP_TOKEN não encontrado em apps/api/.dev.vars.');
-
   try {
     await chamar('GET', '/saude');
   } catch {
@@ -158,21 +153,31 @@ async function principal() {
   }
 
   console.log('Criando a plataforma e a empresa…');
-  try {
-    await chamar('POST', '/setup', {
-      token: setupToken,
-      nome: 'Equipe da Plataforma',
-      email: DEMO.superAdmin,
-      senha: DEMO.senha,
-    });
-  } catch (erro) {
-    if (erro.codigo === 'ja_configurado') {
-      throw new Error(
-        'Este banco já tem dados. A demonstração só roda em banco vazio: confira se a API foi iniciada com "npm run dev:demo" (e não "npm run dev").',
-      );
-    }
-    throw erro;
+  const antes = await fetch(`${API}/auth/entrar`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ login: DEMO.superAdmin, senha: DEMO.senha, modo: 'token' }),
+  });
+  if (antes.ok) {
+    throw new Error(
+      'Este banco já tem dados. A demonstração só roda em banco vazio: confira se a API foi iniciada com "npm run dev:demo" (e não "npm run dev").',
+    );
   }
+  execFileSync(
+    'node',
+    [
+      join(RAIZ, 'scripts/super-admin.mjs'),
+      '--env',
+      'local',
+      '--persist-to',
+      PERSISTENCIA,
+      '--email',
+      DEMO.superAdmin,
+      '--nome',
+      'Equipe da Plataforma',
+    ],
+    { cwd: RAIZ, stdio: 'inherit', env: { ...process.env, SENHA: DEMO.senha } },
+  );
   const superAdmin = await entrar(DEMO.superAdmin);
   const cidades = await chamar('GET', '/admin/cidades', undefined, superAdmin);
   const cascavel = cidades.find((c) => c.nome === 'Cascavel') ?? cidades[0];

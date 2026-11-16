@@ -6,7 +6,6 @@ import './estilo.css';
 import { iniciarMonitoramento, LimiteDeErro } from './monitoramento.ts';
 import { Botao } from './componentes/ui.tsx';
 import { Entrar } from './telas/Entrar.tsx';
-import { ConfiguracaoInicial } from './telas/ConfiguracaoInicial.tsx';
 import { Convite } from './telas/Convite.tsx';
 import { Inicio } from './telas/Inicio.tsx';
 import { Layout } from './telas/Layout.tsx';
@@ -59,7 +58,6 @@ createRoot(document.getElementById('raiz')!).render(
           <Routes>
             <Route path="/" element={<Inicio />} />
             <Route path="/entrar" element={<Entrar />} />
-            <Route path="/configuracao-inicial" element={<ConfiguracaoInicial />} />
             <Route path="/convite/:token" element={<Convite />} />
             <Route element={<Layout />}>
               <Route path="/plataforma/empresas" element={<Empresas />} />

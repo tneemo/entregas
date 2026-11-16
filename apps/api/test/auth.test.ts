@@ -1,30 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { env } from 'cloudflare:workers';
-import { eq } from 'drizzle-orm';
-import { criarDb } from '../src/db/index.ts';
-import { usuarios } from '../src/db/schema.ts';
 import { Cliente, SENHA, empresaComEquipe, novoSuperAdmin } from './ajudantes.ts';
-
-describe('setup do primeiro super admin', () => {
-  it('cria o super admin uma única vez e exige o token', async () => {
-    const db = criarDb(env.DB);
-    // Garante o estado "plataforma nova" neste arquivo.
-    await db.update(usuarios).set({ superAdmin: false }).where(eq(usuarios.superAdmin, true));
-
-    const cliente = new Cliente();
-    const dados = { nome: 'Dono', email: 'dono@entregas.local', senha: SENHA };
-
-    const tokenErrado = await cliente.post('/setup', { ...dados, token: 'errado' });
-    expect(tokenErrado.status).toBe(403);
-
-    const ok = await cliente.post('/setup', { ...dados, token: 'token-de-teste' });
-    expect(ok.status).toBe(201);
-    expect(ok.corpo.usuario.superAdmin).toBe(true);
-
-    const deNovo = await cliente.post('/setup', { ...dados, email: 'outro@entregas.local', token: 'token-de-teste' });
-    expect(deNovo.status).toBe(409);
-  });
-});
 
 describe('login', () => {
   it('entra com cookie HttpOnly e encerra a sessão ao sair', async () => {
