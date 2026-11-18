@@ -71,6 +71,17 @@ O último comando cria a empresa e os pedidos, mostra as contas para entrar (a s
 `apps/api/scripts/demo.mjs`) e continua movendo os motoboys até Ctrl+C. Só funciona em banco vazio: para
 recomeçar, apague `apps/api/.wrangler/demo` e prepare de novo.
 
+## App do motoboy no navegador (iPhone sem o app instalado)
+
+O build publica também o app do motoboy em **/motoboy** (ex.: `https://entregas.tneemo.com/motoboy`), pelo
+mesmo Worker. No iPhone: abrir no Safari → Compartilhar → **Adicionar à Tela de Início**.
+
+- Funciona com o app **aberto e a tela acesa**: o navegador não envia localização com o celular bloqueado
+  nem em segundo plano. Durante o turno o app pede para a tela não apagar (iOS 16.4 ou mais novo) e toca um
+  alerta quando chega oferta (o som é liberado no toque em "Começar turno").
+- Sem notificação no celular: o app confere as ofertas a cada 10 s enquanto está aberto.
+- Serve para testar e demonstrar. Motoboy na rua usa o app instalado (Android pelo APK; iPhone em docs/IOS.md).
+
 ## Testar e apresentar em produção
 
 Em **Empresas** (super admin), o bloco **Empresa de demonstração**:

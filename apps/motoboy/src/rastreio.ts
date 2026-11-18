@@ -7,8 +7,8 @@
 // Os pontos vão para uma fila no aparelho e sobem em lotes; sem sinal, esperam.
 // A API recusa pontos sem turno aberto; nesse caso a fila é descartada e o GPS para.
 //
-// Na web (só desenvolvimento) não há tarefa em segundo plano: usamos watchPosition
-// enquanto a página está aberta.
+// Na web (desenvolvimento e a versão de navegador em /motoboy) não há tarefa em segundo plano:
+// usamos watchPosition enquanto a página está aberta, com a tela mantida acesa durante o turno.
 
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,6 +17,7 @@ import * as TaskManager from 'expo-task-manager';
 import type { DadosPosicoes } from '@entregas/shared';
 import { api, ErroDaApi } from './api.ts';
 import { cores } from './tema.ts';
+import { manterTelaAcesa } from './navegador.ts';
 // Também inicia o Sentry quando o Android acorda o app só para esta tarefa.
 import { Sentry } from './monitoramento.ts';
 
@@ -113,6 +114,7 @@ export async function iniciarRastreio(empresaId: string, nomeEmpresa: string): P
         await enviarFila();
       },
     );
+    await manterTelaAcesa(true);
     return 'so_com_app_aberto';
   }
 
@@ -140,6 +142,7 @@ export async function iniciarRastreio(empresaId: string, nomeEmpresa: string): P
 export async function pararRastreio() {
   observadorWeb?.remove();
   observadorWeb = null;
+  await manterTelaAcesa(false);
   if (Platform.OS !== 'web' && (await Location.hasStartedLocationUpdatesAsync(TAREFA).catch(() => false))) {
     await Location.stopLocationUpdatesAsync(TAREFA);
   }

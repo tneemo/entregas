@@ -12,11 +12,13 @@
   // Painel (React) servido pelo mesmo Worker: /api/* vai para o código, o resto para os arquivos estáticos.
   // /r/* (rastreio público) passa pelo código para servir a página leve de acompanhamento.
   // /__scheduled só existe no wrangler dev --test-scheduled (dispara o cron à mão); em produção dá 404.
+  // /motoboy/* é o app do motoboy na versão de navegador (apps/motoboy, build:web): o código devolve
+  // o index.html dele nas rotas internas, em vez do index.html do painel.
   "assets": {
     "directory": "../painel/dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/r/*", "/__scheduled"]
+    "run_worker_first": ["/api/*", "/r/*", "/__scheduled", "/motoboy", "/motoboy/*"]
   },
 
   // Tempo real: um CentralEmpresa por empresa (mapa ao vivo e rastreio por WebSocket).

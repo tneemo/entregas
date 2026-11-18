@@ -4,6 +4,11 @@ O app (`apps/motoboy`) é o mesmo do Android: Expo + expo-router. A configuraç�
 no `app.json` (identificador `br.com.entregas.motoboy`, GPS em segundo plano, push, câmera) e os
 perfis do `eas.json` servem às duas plataformas. Falta só o que depende da conta da Apple.
 
+## Antes da conta da Apple: versão de navegador
+
+Para testar ou demonstrar num iPhone sem o app instalado, use `https://entregas.tneemo.com/motoboy` adicionado
+à Tela de Início (ver README). Funciona só com a tela acesa e o app aberto; para o motoboy na rua, o app nativo.
+
 ## Requisitos
 
 - **Apple Developer Program**: US$ 99 por ano, em nome da empresa (CNPJ pede o número D-U-N-S, que

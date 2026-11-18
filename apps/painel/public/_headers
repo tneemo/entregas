@@ -6,3 +6,6 @@
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+/motoboy/_expo/*
+  Cache-Control: public, max-age=31536000, immutable

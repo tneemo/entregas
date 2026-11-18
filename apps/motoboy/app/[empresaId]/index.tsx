@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Redirect, Stack, router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,15 +13,20 @@ import {
   type ResultadoRastreio,
 } from '../../src/rastreio.ts';
 import { empresasDoMotoboy, useSessao } from '../../src/sessao.tsx';
+import { CartaoOferta } from '../../src/CartaoOferta.tsx';
+import { alertarOferta, liberarSom, manterTelaAcesa, telaAcesaDisponivel } from '../../src/navegador.ts';
 import { cores, espaco, texto } from '../../src/tema.ts';
 
 const AVISO_GPS: Record<ResultadoRastreio, { tipo: 'ok' | 'info' | 'erro'; texto: string }> = {
   segundo_plano: { tipo: 'ok', texto: 'Localização ligada, inclusive com a tela apagada.' },
   so_com_app_aberto: {
     tipo: 'info',
-    texto: `A localização só é enviada com o app aberto. Para funcionar com a tela apagada, permita a localização ${
-      Platform.OS === 'ios' ? '"Sempre"' : '"o tempo todo"'
-    } nas configurações.`,
+    texto:
+      Platform.OS === 'web'
+        ? 'Versão de navegador: a localização só é enviada com esta tela aberta e acesa. Não bloqueie o celular nem troque de app durante o turno.'
+        : `A localização só é enviada com o app aberto. Para funcionar com a tela apagada, permita a localização ${
+            Platform.OS === 'ios' ? '"Sempre"' : '"o tempo todo"'
+          } nas configurações.`,
   },
   sem_permissao: { tipo: 'erro', texto: 'Localização negada: a central não vai ver você no mapa.' },
 };
@@ -89,9 +94,20 @@ export default function Turno() {
     queryKey: ['entregas', empresaId],
     queryFn: () => api<PedidoResumo[]>(`/empresas/${empresaId}/pedidos`),
     enabled: Boolean(vinculo),
-    // Com turno aberto, confere sozinho: a cada 15 s sem notificação; com ela, só como rede de segurança.
-    refetchInterval: emTurno ? (notificacoes === 'ativa' ? 60_000 : 15_000) : false,
+    // Com turno aberto, confere sozinho: a cada 10 s sem notificação (oferta tem prazo curto);
+    // com ela, só como rede de segurança.
+    refetchInterval: emTurno ? (notificacoes === 'ativa' ? 60_000 : 10_000) : false,
   });
+
+  // Oferta nova na lista: alerta sonoro na versão de navegador (no app, a notificação já tocou).
+  const ofertasVistas = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!entregas.data) return;
+    const ofertas = entregas.data.filter((p) => p.status === 'atribuido').map((p) => p.id);
+    const novas = ofertasVistas.current ? ofertas.filter((id) => !ofertasVistas.current!.has(id)) : [];
+    ofertasVistas.current = new Set(ofertas);
+    if (novas.length > 0) alertarOferta();
+  }, [entregas.data]);
 
   // App reaberto com turno aberto: garante que o GPS continua e esvazia a fila.
   useEffect(() => {
@@ -105,6 +121,8 @@ export default function Turno() {
 
   const iniciar = useMutation({
     mutationFn: async () => {
+      // Dentro do toque: o navegador do iPhone só deixa tocar o alerta depois de um toque.
+      liberarSom();
       const r = await api<TurnoResposta>(`/empresas/${empresaId}/turno`, { metodo: 'POST' });
       setGps(await iniciarRastreio(empresaId, nomeEmpresa));
       return r;
@@ -127,6 +145,8 @@ export default function Turno() {
 
   const outra = turno.data?.emOutraEmpresa;
   const lista = entregas.data ?? [];
+  const ofertas = lista.filter((p) => p.status === 'atribuido');
+  const emAndamento = lista.filter((p) => p.status !== 'atribuido');
 
   return (
     <>
@@ -143,6 +163,10 @@ export default function Turno() {
           />
         }
       >
+        {/* Oferta primeiro: é o que tem prazo correndo. */}
+        {ofertas.map((p) => (
+          <CartaoOferta key={p.id} empresaId={empresaId} pedido={p} />
+        ))}
         <Placa textoPlaca={nomeEmpresa} />
         {empresas.length > 1 && (
           <Botao titulo="Trocar de empresa" variante="secundario" aoTocar={() => router.push('/empresas')} />
@@ -160,6 +184,17 @@ export default function Turno() {
             <>
               <Text style={texto.corpo}>Em turno desde {horaCurta(turno.data!.turno!.iniciadoEm)}.</Text>
               {gps && <Aviso tipo={AVISO_GPS[gps].tipo}>{AVISO_GPS[gps].texto}</Aviso>}
+              {Platform.OS === 'web' && (
+                <Botao
+                  titulo={telaAcesaDisponivel() ? 'Manter a tela acesa e ligar o som' : 'Ligar o som dos alertas'}
+                  variante="secundario"
+                  aoTocar={() => {
+                    // Reforço manual: alguns navegadores só aceitam com um toque da pessoa.
+                    liberarSom();
+                    void manterTelaAcesa(true);
+                  }}
+                />
+              )}
               {gps === 'so_com_app_aberto' && Platform.OS !== 'web' && (
                 <Botao titulo="Abrir configurações" variante="secundario" aoTocar={() => Linking.openSettings()} />
               )}
@@ -198,15 +233,17 @@ export default function Turno() {
         </Secao>
 
         <Text style={texto.subtitulo} accessibilityRole="header">
-          Suas entregas {lista.length > 0 ? `(${lista.length})` : ''}
+          Suas entregas {emAndamento.length > 0 ? `(${emAndamento.length})` : ''}
         </Text>
         {entregas.error && <Aviso>{entregas.error.message}</Aviso>}
-        {lista.length === 0 && !entregas.isLoading ? (
+        {emAndamento.length === 0 && !entregas.isLoading ? (
           <Text style={texto.apoio}>
-            Nenhuma entrega com você agora. Quando a central atribuir um pedido, ele aparece aqui.
+            {ofertas.length > 0
+              ? 'Aceite a oferta acima para ela entrar aqui.'
+              : 'Nenhuma entrega com você agora. Quando chegar uma oferta, ela aparece aqui em cima.'}
           </Text>
         ) : (
-          lista.map((p) => <CartaoEntrega key={p.id} empresaId={empresaId} pedido={p} />)
+          emAndamento.map((p) => <CartaoEntrega key={p.id} empresaId={empresaId} pedido={p} />)
         )}
 
         <View style={{ marginTop: espaco.g }}>
