@@ -1,7 +1,14 @@
 import type { ErroResposta } from '@entregas/shared';
 import { lerToken } from './armazenamento.ts';
 
-export const URL_API = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8787').replace(/\/$/, '');
+/**
+ * Endereço da API. Na versão de navegador publicada (EXPO_PUBLIC_MESMA_ORIGEM=1) o app é servido
+ * pelo mesmo Worker da API, então as chamadas vão para o próprio site.
+ */
+export const URL_API =
+  process.env.EXPO_PUBLIC_MESMA_ORIGEM === '1'
+    ? ''
+    : (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8787').replace(/\/$/, '');
 
 export class ErroDaApi extends Error {
   constructor(

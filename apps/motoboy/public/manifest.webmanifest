@@ -1,0 +1,15 @@
+{
+  "name": "Entregas Motoboy",
+  "short_name": "Motoboy",
+  "lang": "pt-BR",
+  "start_url": "/motoboy/",
+  "scope": "/motoboy/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f6f8",
+  "theme_color": "#0b3d91",
+  "icons": [
+    { "src": "/motoboy/icone-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/motoboy/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

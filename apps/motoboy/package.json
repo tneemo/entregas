@@ -7,6 +7,7 @@
     "start": "expo start",
     "web": "expo start --web --port 8081",
     "android": "expo start --android",
+    "build:web": "EXPO_NO_TELEMETRY=1 MOTOBOY_WEB=1 EXPO_PUBLIC_MESMA_ORIGEM=1 expo export -p web --output-dir ../painel/dist/motoboy",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -191,6 +191,9 @@ export interface PedidoResumo {
   };
   /** Ponto de coleta no mapa: base da sugestão de motoboy mais próximo. */
   pontoColeta: Coordenadas | null;
+  /** Onde retirar: nome (loja ou contato) e bairro, para a oferta e a lista do motoboy. */
+  origem: { nome: string | null; bairro: string };
+  taxaEntregaCentavos: number;
   motoboy: { vinculoId: string; nome: string } | null;
   formaPagamento: FormaPagamento;
   valorACobrarCentavos: number;

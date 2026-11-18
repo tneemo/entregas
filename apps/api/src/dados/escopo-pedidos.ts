@@ -212,6 +212,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     destinoNome: destino.nome,
     destinoEndereco: destino.endereco,
     origemEndereco: origem.endereco,
+    origemNome: origem.nome,
     motoboyNome: usuarioMotoboy.nome,
     lojaNome: lojas.nome,
   };
@@ -233,6 +234,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     destinoNome,
     destinoEndereco: e,
     origemEndereco,
+    origemNome,
     motoboyNome,
     lojaNome,
   }: LinhaResumo): PedidoResumo => ({
@@ -250,6 +252,8 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       coordenadas: coordenadas(e),
     },
     pontoColeta: coordenadas(origemEndereco),
+    origem: { nome: origemNome, bairro: origemEndereco.bairro },
+    taxaEntregaCentavos: p.taxaEntregaCentavos,
     motoboy: p.motoboyVinculoId && motoboyNome ? { vinculoId: p.motoboyVinculoId, nome: motoboyNome } : null,
     formaPagamento: p.formaPagamento,
     valorACobrarCentavos: p.valorACobrarCentavos,

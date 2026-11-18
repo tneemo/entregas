@@ -84,10 +84,25 @@ async function paginaRastreio(request: Request, env: Env) {
   return resposta;
 }
 
+/**
+ * /motoboy: app do motoboy na versão de navegador (export web do Expo dentro do build do painel).
+ * Arquivos (com extensão) saem direto; rotas internas do app recebem o index.html dele.
+ */
+async function appMotoboy(request: Request, env: Env) {
+  const url = new URL(request.url);
+  if (url.pathname === '/motoboy') return Response.redirect(new URL('/motoboy/', url).toString(), 308);
+  if (/\.[a-z0-9]+$/i.test(url.pathname)) return env.ASSETS.fetch(request);
+  const pagina = await env.ASSETS.fetch(new Request(new URL('/motoboy/', url), request));
+  const resposta = new Response(pagina.body, pagina);
+  resposta.headers.set('cache-control', 'no-cache');
+  return resposta;
+}
+
 const worker = {
   fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
     if (pathname.startsWith('/r/')) return paginaRastreio(request, env);
+    if (pathname === '/motoboy' || pathname.startsWith('/motoboy/')) return appMotoboy(request, env);
     return app.fetch(request, env, ctx);
   },
   /**

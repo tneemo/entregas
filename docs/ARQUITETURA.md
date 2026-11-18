@@ -141,6 +141,8 @@ flowchart LR
   - O painel mostra "sem notificação" ao lado do motoboy cujo celular não recebe (na atribuição e no mapa ao vivo), para a central ligar.
   - Depende de Firebase no build do app (`google-services.json` pelo EAS, chave FCM V1 nas credenciais do EAS). Sem isso, o app funciona e segue consultando.
 - Distribuição: Google Play (conta de desenvolvedor) ou APK direto na fase piloto.
+- **Versão de navegador** (`npm run build:web -w @entregas/motoboy`, dentro do `npm run build`): export web do Expo em `apps/painel/dist/motoboy`, servido pelo Worker em `/motoboy` (o código devolve o `index.html` do app nas rotas internas). Chama a API na mesma origem (`EXPO_PUBLIC_MESMA_ORIGEM`). Sem GPS em segundo plano: só com a tela acesa (Screen Wake Lock durante o turno) e alerta sonoro de oferta (`src/navegador.ts`). Para testes e iPhone sem conta da Apple.
+- **Tela de oferta** (`src/CartaoOferta.tsx`): todo pedido aguardando aceite aparece no topo com mapa (tiles do OpenStreetMap montados em `src/MapaEstatico.tsx`, sem biblioteca nativa), coleta, entrega, distâncias estimadas, taxa, cobrança, contagem do prazo e Aceitar/Recusar.
 
 ### Google Maps
 - **Provisório:** enquanto não há conta no Google Cloud, os mapas usam Leaflet + OpenStreetMap (`apps/painel/src/componentes/Mapa.tsx`). A política de uso dos servidores do OSM não comporta volume de produção; a troca para o Maps JavaScript fica toda nesse componente.
