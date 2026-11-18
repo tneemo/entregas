@@ -19,6 +19,7 @@ import {
   IconeSino,
   IconeSinoMudo,
   IconeSol,
+  IconeVitrine,
 } from '../componentes/icones.tsx';
 import { Avisos, definirSom, useSomLigado } from '../avisos.tsx';
 import { definirTema, useTema } from '../tema.ts';
@@ -57,6 +58,7 @@ function itensDoMenu(eu: EuResposta, empresaId: string | undefined, fila: { semM
       },
       { para: `${base}/mapa`, rotulo: 'Mapa ao vivo', icone: <IconeMapa /> },
       { para: `${base}/visao-geral`, rotulo: 'Visão geral', icone: <IconeGrafico /> },
+      { para: `${base}/lojas`, rotulo: 'Lojas', icone: <IconeVitrine /> },
       { para: `${base}/equipe`, rotulo: 'Equipe', icone: <IconeEquipe /> },
     );
     if (vinculo.papel === 'admin') {

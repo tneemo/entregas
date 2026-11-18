@@ -16,6 +16,7 @@ import {
 import { api } from '../api.ts';
 import { AvisoErro, Cartao, Esqueleto } from '../componentes/ui.tsx';
 import {
+  SeloOferta,
   SeloStatus,
   contagem,
   haQuanto,
@@ -161,6 +162,7 @@ function LinhaPedido({
         <span className="block truncate text-sm text-concreto">
           {destino.logradouro}, {destino.numero}, {destino.bairro}
         </span>
+        {pedido.loja && <span className="block truncate text-sm text-concreto">Loja: {pedido.loja.nome}</span>}
       </div>
       <div className="col-start-2 md:col-start-auto">
         {pedido.status === 'pendente' && !historico ? (
@@ -169,6 +171,7 @@ function LinhaPedido({
           <div className="flex flex-col items-start gap-1">
             <SeloStatus status={pedido.status} />
             {pedido.motoboy && <span className="text-sm">{pedido.motoboy.nome}</span>}
+            {pedido.status === 'atribuido' && pedido.ofertaAutomatica && <SeloOferta />}
             {pedido.status === 'atribuido' && pedido.aceiteAte && <PrazoDeAceite ate={pedido.aceiteAte} />}
           </div>
         )}

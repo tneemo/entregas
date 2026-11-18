@@ -10,6 +10,7 @@ import {
   type ConviteCriadoResposta,
   type ConvitePendenteResposta,
   type DadosAtualizarMembro,
+  type LojaResposta,
   type MembroResposta,
   type Papel,
 } from '@entregas/shared';
@@ -17,6 +18,7 @@ import { api } from '../api.ts';
 import { useEu } from '../sessao.ts';
 import { LinkConvite } from '../componentes/LinkConvite.tsx';
 import { AvisoErro, Botao, Campo, Selecao, Situacao, dataCurta } from '../componentes/ui.tsx';
+import { useLojas } from '../componentes/pedido.tsx';
 
 function Convidar({ empresaId, nomeEmpresa, meuPapel }: { empresaId: string; nomeEmpresa: string; meuPapel: Papel }) {
   const cliente = useQueryClient();
@@ -77,18 +79,28 @@ function LinhaMembro({
   empresaId,
   souAdmin,
   souEu,
+  lojas,
 }: {
   membro: MembroResposta;
   empresaId: string;
   souAdmin: boolean;
   souEu: boolean;
+  lojas: LojaResposta[];
 }) {
   const cliente = useQueryClient();
   const atualizar = useMutation({
     mutationFn: (dados: DadosAtualizarMembro) =>
       api<MembroResposta>(`/empresas/${empresaId}/membros/${membro.vinculoId}`, { metodo: 'PATCH', corpo: dados }),
-    onSuccess: () => cliente.invalidateQueries({ queryKey: ['membros', empresaId] }),
+    onSuccess: () => {
+      cliente.invalidateQueries({ queryKey: ['membros', empresaId] });
+      // A loja fixa muda a lista de fixos das lojas e a sugestão de despacho.
+      cliente.invalidateQueries({ queryKey: ['lojas', empresaId] });
+      cliente.invalidateQueries({ queryKey: ['motoboys', empresaId] });
+    },
   });
+  const lojaFixa = lojas.find((l) => l.id === membro.lojaId);
+  // Só lojas ativas para escolher; a atual continua na lista mesmo se foi desativada.
+  const opcoesLoja = lojas.filter((l) => l.ativa || l.id === membro.lojaId);
   const editavel = souAdmin && !souEu;
   const ativo = membro.status === 'ativo';
   const contato = membro.usuario.telefone ? formatarTelefone(membro.usuario.telefone) : membro.usuario.email;
@@ -148,6 +160,34 @@ function LinhaMembro({
           ROTULOS.tipoVinculo[membro.tipoVinculo]
         ) : (
           'Não informado'
+        )}
+      </td>
+      <td className="py-3 pr-4">
+        {membro.papel !== 'motoboy' ? (
+          <span className="text-concreto">
+            <span aria-hidden="true">–</span>
+            <span className="sr-only">Não se aplica</span>
+          </span>
+        ) : souAdmin && (opcoesLoja.length > 0 || membro.lojaId) ? (
+          <select
+            aria-label={`Loja fixa de ${membro.usuario.nome}`}
+            value={membro.lojaId ?? ''}
+            disabled={atualizar.isPending}
+            onChange={(e) => atualizar.mutate({ lojaId: e.target.value || null })}
+            className="min-h-9 max-w-48 rounded border border-linha bg-superficie px-1"
+          >
+            <option value="">Livre (roda a cidade)</option>
+            {opcoesLoja.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.nome}
+                {l.ativa ? '' : ' (inativa)'}
+              </option>
+            ))}
+          </select>
+        ) : lojaFixa ? (
+          `Fixo: ${lojaFixa.nome}`
+        ) : (
+          'Livre'
         )}
       </td>
       <td className="py-3 pr-4">
@@ -216,6 +256,7 @@ export function Equipe() {
     queryKey: ['membros', empresaId],
     queryFn: () => api<MembroResposta[]>(`/empresas/${empresaId}/membros`),
   });
+  const lojas = useLojas(empresaId, Boolean(vinculo));
 
   if (!eu || !vinculo) return null;
   const souAdmin = vinculo.papel === 'admin';
@@ -250,6 +291,7 @@ export function Equipe() {
                   <th className="hidden pb-2 pr-4 font-medium xl:table-cell">Contato</th>
                   <th className="pb-2 pr-4 font-medium">Função</th>
                   <th className="pb-2 pr-4 font-medium">Vínculo</th>
+                  <th className="pb-2 pr-4 font-medium">Loja fixa</th>
                   <th className="pb-2 pr-4 font-medium">Situação</th>
                   <th className="pb-2">
                     <span className="sr-only">Ações</span>
@@ -264,6 +306,7 @@ export function Equipe() {
                     empresaId={empresaId}
                     souAdmin={souAdmin}
                     souEu={m.vinculoId === vinculo.vinculoId}
+                    lojas={lojas.data ?? []}
                   />
                 ))}
               </tbody>

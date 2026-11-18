@@ -5,6 +5,7 @@ import {
   type DadosEmpresaResposta,
   type EnderecoResposta,
   type Localizacao,
+  type LojaResposta,
   type MotoboyResumo,
   type PedidoResumo,
   type StatusPedido,
@@ -33,6 +34,18 @@ export function SeloStatus({ status }: { status: StatusPedido }) {
       className={`inline-flex whitespace-nowrap rounded px-2 py-0.5 text-sm font-medium ring-1 ${COR_STATUS[status]}`}
     >
       {ROTULOS_STATUS[status]}
+    </span>
+  );
+}
+
+/** O sistema ofereceu sozinho (despacho automático); se ele não aceitar, passa para o próximo. */
+export function SeloOferta() {
+  return (
+    <span
+      className="inline-flex whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ring-1 ring-mercosul/40 text-mercosul"
+      title="O sistema ofereceu este pedido sozinho. Se o motoboy recusar ou não responder, passa para o próximo."
+    >
+      Oferta automática
     </span>
   );
 }
@@ -90,6 +103,16 @@ export function useMotoboys(empresaId: string) {
     queryKey: ['motoboys', empresaId],
     queryFn: () => api<MotoboyResumo[]>(`/empresas/${empresaId}/motoboys`),
     staleTime: 15_000,
+  });
+}
+
+/** Lojas atendidas pela empresa (ponto de coleta e motoboys fixos). */
+export function useLojas(empresaId: string, ativo = true) {
+  return useQuery({
+    queryKey: ['lojas', empresaId],
+    queryFn: () => api<LojaResposta[]>(`/empresas/${empresaId}/lojas`),
+    staleTime: 30_000,
+    enabled: ativo && Boolean(empresaId),
   });
 }
 

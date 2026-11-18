@@ -36,6 +36,10 @@ function Traco({ d, ...props }: Props & { d: string }) {
 export const IconeFila = (p: Props) => <Traco {...p} d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />;
 export const IconeGrafico = (p: Props) => <Traco {...p} d="M4 20V11M10 20V4M16 20v-7M22 20H2" />;
 export const IconeLoja = (p: Props) => <Traco {...p} d="M3 21h18M5 21V9l7-5 7 5v12M9.5 21v-6h5v6" />;
+/** Fachada com toldo: lojas atendidas. */
+export const IconeVitrine = (p: Props) => (
+  <Traco {...p} d="M4 10v10h16V10M3 4h18l1 4a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0zM9 20v-5h6v5" />
+);
 export const IconeSair = (p: Props) => (
   <Traco {...p} d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
 );

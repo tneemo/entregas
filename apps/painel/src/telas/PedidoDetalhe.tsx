@@ -31,7 +31,14 @@ import {
   erroDoCampo,
 } from '../componentes/ui.tsx';
 import { silenciarAviso } from '../tempo-real.ts';
-import { SeloStatus, enderecoEmLinha, horaCurta, rotuloMotoboy, useMotoboys } from '../componentes/pedido.tsx';
+import {
+  SeloOferta,
+  SeloStatus,
+  enderecoEmLinha,
+  horaCurta,
+  rotuloMotoboy,
+  useMotoboys,
+} from '../componentes/pedido.tsx';
 import type { Marcador } from '../componentes/Mapa.tsx';
 
 // O mapa (Leaflet) só baixa quando o pedido tem algum ponto para mostrar.
@@ -316,13 +323,17 @@ export function PedidoDetalhe() {
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-4xl">Pedido {p.numero}</h1>
           <SeloStatus status={p.status} />
+          {p.status === 'atribuido' && p.ofertaAutomatica && <SeloOferta />}
         </div>
         <p className="text-concreto">
           Criado às {horaCurta(p.criadoEm)}
+          {p.loja && `, loja ${p.loja.nome}`}
           {p.motoboy ? `. Motoboy: ${p.motoboy.nome}.` : '. Ainda sem motoboy.'}
           {p.status === 'atribuido' &&
             p.aceiteAte &&
-            ` Se ele não aceitar até ${horaCurta(p.aceiteAte)}, o pedido volta para a fila.`}
+            (p.ofertaAutomatica
+              ? ` Oferta automática: se ele não aceitar até ${horaCurta(p.aceiteAte)}, passa para o próximo motoboy.`
+              : ` Se ele não aceitar até ${horaCurta(p.aceiteAte)}, o pedido volta para a fila.`)}
         </p>
         {p.motivo && (p.status === 'falhou' || p.status === 'cancelado' || p.status === 'em_devolucao') && (
           <p className="border-l-4 border-aluguel bg-superficie px-3 py-2">Motivo: {p.motivo}</p>
