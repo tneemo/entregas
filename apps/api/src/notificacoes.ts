@@ -63,6 +63,16 @@ export const avisos = {
     texto: 'A central cancelou este pedido. Se já estava com o item, fale com ela.',
     dados: dadosDo(empresaId, p.id),
   }),
+  oferta: (
+    usuarioId: string,
+    empresaId: string,
+    o: { pedidoId: string; numero: number; bairroColeta: string; segundos: number },
+  ): Aviso => ({
+    usuarioId,
+    titulo: `Pedido ${o.numero} oferecido para você`,
+    texto: `Coleta: ${o.bairroColeta}. Você tem ${o.segundos} s para aceitar; depois ele passa para outro motoboy.`,
+    dados: dadosDo(empresaId, o.pedidoId),
+  }),
   prazoEsgotado: (usuarioId: string, empresaId: string, pedido: { id: string; numero: number }): Aviso => ({
     usuarioId,
     titulo: `Pedido ${pedido.numero} voltou para a central`,

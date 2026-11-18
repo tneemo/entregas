@@ -38,6 +38,7 @@ import {
   empresas,
   eventosPedido,
   fotosPedido,
+  lojas,
   paradas,
   pedidos,
   sessoes,
@@ -49,6 +50,7 @@ import type { ContextoEmpresa } from '../tipos.ts';
 import { ErroApi, camposInvalidos, naoEncontrado, proibido } from '../erros.ts';
 import { gerarToken } from '../auth/cripto.ts';
 import { DIA_MS, inicioDoDia } from './fuso.ts';
+import { escopoLojas } from './escopo-lojas.ts';
 
 type DadosCriar = z.output<typeof schemaCriarPedido>;
 type DadosAcao = z.output<typeof schemaAcaoPedidoComPosicao>;
@@ -81,7 +83,7 @@ function prazoDeAceite(regras: RegrasEntrega, agora: Date): Date | null {
   return regras.prazoAceiteMin ? new Date(agora.getTime() + regras.prazoAceiteMin * 60_000) : null;
 }
 
-interface NovoEvento {
+export interface NovoEvento {
   empresaId: string;
   pedidoId: string;
   acao: AcaoPedido;
@@ -102,7 +104,7 @@ interface NovoEvento {
  * anterior, então a mudança de status e o evento acontecem juntos ou não acontecem.
  * (O Drizzle não aceita SQL bruto dentro de batch no D1, por isso o cliente direto.)
  */
-function eventoSeMudou(d1: D1Database, e: NovoEvento) {
+export function eventoSeMudou(d1: D1Database, e: NovoEvento) {
   return d1
     .prepare(
       `INSERT INTO eventos_pedido (id, empresa_id, pedido_id, acao, de, para, usuario_id, papel, motivo, detalhe, latitude, longitude, criado_em)
@@ -126,16 +128,23 @@ function eventoSeMudou(d1: D1Database, e: NovoEvento) {
 }
 
 /**
- * Cron de cada minuto: pedido atribuído cujo prazo de aceite acabou volta para a fila
- * sem motoboy. O evento fica no nome do motoboy que não respondeu. Devolve os pedidos
- * que voltaram, para avisar o tempo real de cada empresa.
+ * Cron de cada minuto (e o alarme do despacho automático, só para uma empresa): pedido
+ * atribuído cujo prazo de aceite acabou volta para a fila sem motoboy. O evento fica no
+ * nome do motoboy que não respondeu. Devolve os pedidos que voltaram, para avisar o tempo
+ * real de cada empresa.
  */
-export async function expirarAceites(db: Db, agora = new Date()) {
+export async function expirarAceites(db: Db, agora = new Date(), soDaEmpresa?: string) {
   const vencidos = await db
     .select({ id: pedidos.id, numero: pedidos.numero, empresaId: pedidos.empresaId, usuarioId: vinculos.usuarioId })
     .from(pedidos)
     .innerJoin(vinculos, eq(vinculos.id, pedidos.motoboyVinculoId))
-    .where(and(eq(pedidos.status, 'atribuido'), lte(pedidos.aceiteAte, agora)))
+    .where(
+      and(
+        eq(pedidos.status, 'atribuido'),
+        lte(pedidos.aceiteAte, agora),
+        soDaEmpresa ? eq(pedidos.empresaId, soDaEmpresa) : undefined,
+      ),
+    )
     .limit(50)
     .all();
   if (vencidos.length === 0) return [];
@@ -145,7 +154,13 @@ export async function expirarAceites(db: Db, agora = new Date()) {
     // As condições se repetem: se a central trocou o motoboy nesse meio-tempo, o prazo é outro.
     const atualizar = db
       .update(pedidos)
-      .set({ status: 'pendente', motoboyVinculoId: null, aceiteAte: null, atualizadoEm: agora })
+      .set({
+        status: 'pendente',
+        motoboyVinculoId: null,
+        aceiteAte: null,
+        ofertaAutomatica: false,
+        atualizadoEm: agora,
+      })
       .where(
         and(
           eq(pedidos.id, p.id),
@@ -198,6 +213,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     destinoEndereco: destino.endereco,
     origemEndereco: origem.endereco,
     motoboyNome: usuarioMotoboy.nome,
+    lojaNome: lojas.nome,
   };
 
   const consultaResumo = () =>
@@ -207,7 +223,8 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
       .innerJoin(destino, and(eq(destino.pedidoId, pedidos.id), eq(destino.ordem, 1)))
       .innerJoin(origem, and(eq(origem.pedidoId, pedidos.id), eq(origem.ordem, 0)))
       .leftJoin(vinculos, eq(vinculos.id, pedidos.motoboyVinculoId))
-      .leftJoin(usuarioMotoboy, eq(usuarioMotoboy.id, vinculos.usuarioId));
+      .leftJoin(usuarioMotoboy, eq(usuarioMotoboy.id, vinculos.usuarioId))
+      .leftJoin(lojas, and(eq(lojas.id, pedidos.lojaId), eq(lojas.empresaId, pedidos.empresaId)));
 
   type LinhaResumo = Awaited<ReturnType<ReturnType<typeof consultaResumo>['all']>>[number];
 
@@ -217,6 +234,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     destinoEndereco: e,
     origemEndereco,
     motoboyNome,
+    lojaNome,
   }: LinhaResumo): PedidoResumo => ({
     id: p.id,
     numero: p.numero,
@@ -236,6 +254,8 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     formaPagamento: p.formaPagamento,
     valorACobrarCentavos: p.valorACobrarCentavos,
     aceiteAte: p.aceiteAte?.toISOString() ?? null,
+    loja: p.lojaId && lojaNome ? { id: p.lojaId, nome: lojaNome } : null,
+    ofertaAutomatica: p.ofertaAutomatica,
   });
 
   async function regras(): Promise<RegrasEntrega> {
@@ -421,6 +441,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
     async criar(dados: DadosCriar): Promise<PedidoDetalhe> {
       if (ehMotoboy) throw proibido();
       const motoboy = dados.motoboyVinculoId ? await motoboyValido(dados.motoboyVinculoId) : null;
+      const loja = dados.lojaId ? await escopoLojas(db, ctx).exigirAtiva(dados.lojaId, 'lojaId') : null;
 
       // Guarda o destinatário para preencher o próximo pedido pelo telefone.
       const cliente = await db
@@ -453,6 +474,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
           motoboyVinculoId: motoboy?.id ?? null,
           aceiteAte,
           clienteId: cliente.id,
+          lojaId: loja?.id ?? null,
           formaPagamento: dados.formaPagamento,
           valorACobrarCentavos: dados.valorACobrarCentavos,
           trocoParaCentavos: dados.trocoParaCentavos ?? null,
@@ -601,6 +623,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
           motivo: dados.motivo ?? pedido.motivo,
           // Toda nova atribuição recomeça o prazo; qualquer outra mudança o encerra.
           aceiteAte: transicao.para === 'atribuido' && regrasEmpresa ? prazoDeAceite(regrasEmpresa, agora) : null,
+          ofertaAutomatica: false,
           concluidoEm: statusFinal(transicao.para) ? agora : null,
           atualizadoEm: agora,
         })
@@ -652,6 +675,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
             vinculoId: vinculos.id,
             nome: usuarios.nome,
             telefone: usuarios.telefone,
+            lojaId: vinculos.lojaId,
             pedidosAtivos: count(pedidos.id),
             emTurno:
               sql<number>`EXISTS (SELECT 1 FROM ${turnos} WHERE ${turnos.vinculoId} = ${vinculos.id} AND ${turnos.encerradoEm} IS NULL)`
@@ -667,7 +691,7 @@ export function escopoPedidos(db: Db, ctx: ContextoEmpresa) {
           .innerJoin(usuarios, eq(usuarios.id, vinculos.usuarioId))
           .leftJoin(pedidos, and(eq(pedidos.motoboyVinculoId, vinculos.id), notInArray(pedidos.status, STATUS_FINAIS)))
           .where(and(eq(vinculos.empresaId, empresaId), eq(vinculos.papel, 'motoboy'), eq(vinculos.status, 'ativo')))
-          .groupBy(vinculos.id, usuarios.nome, usuarios.telefone)
+          .groupBy(vinculos.id, usuarios.nome, usuarios.telefone, vinculos.lojaId)
           // Quem está em turno aparece primeiro na hora de despachar.
           .orderBy(sql`em_turno DESC`, asc(usuarios.nome))
           .all() as Promise<MotoboyResumo[]>

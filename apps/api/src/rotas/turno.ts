@@ -17,7 +17,11 @@ export const rotasTurno = new Hono<AppEnv>()
     const { empresaId, vinculoId } = c.var.empresa;
     const { resposta, turnoFechado } = await escopo(c).iniciar();
     if (turnoFechado) avisar(c, turnoFechado.empresaId, (central) => central.mudouTurno(turnoFechado.vinculoId, false));
-    avisar(c, empresaId, (central) => central.mudouTurno(vinculoId, true));
+    avisar(c, empresaId, async (central) => {
+      await central.mudouTurno(vinculoId, true);
+      // Motoboy novo na rua: no modo automático, os pedidos esperando podem ir para ele.
+      await central.despachar(empresaId);
+    });
     return c.json(resposta, 201);
   })
   .delete('/', async (c) => {

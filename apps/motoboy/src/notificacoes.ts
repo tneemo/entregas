@@ -1,4 +1,4 @@
-// Notificações de pedido no celular (Expo Push, entregue pelo Firebase no Android).
+// Notificações de pedido no celular (Expo Push, entregue pelo Firebase no Android e pela Apple no iPhone).
 //
 // - Canal "Pedidos" com prioridade máxima, som e vibração: o motoboy anda com o celular no bolso.
 // - O celular é cadastrado na API preso à sessão: sair do app para os avisos sozinho.
@@ -59,7 +59,7 @@ export async function ativarNotificacoes(): Promise<SituacaoNotificacao> {
     await api('/auth/dispositivo', { metodo: 'POST', corpo });
     return 'ativa';
   } catch (erro) {
-    // Ex.: build sem Firebase (google-services.json) ou sem internet agora.
+    // Ex.: build sem Firebase (google-services.json) ou sem chave da Apple (APNs), ou sem internet agora.
     Sentry.captureException(erro);
     return 'indisponivel';
   }

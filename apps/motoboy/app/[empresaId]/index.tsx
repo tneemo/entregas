@@ -19,8 +19,9 @@ const AVISO_GPS: Record<ResultadoRastreio, { tipo: 'ok' | 'info' | 'erro'; texto
   segundo_plano: { tipo: 'ok', texto: 'Localização ligada, inclusive com a tela apagada.' },
   so_com_app_aberto: {
     tipo: 'info',
-    texto:
-      'A localização só é enviada com o app aberto. Para funcionar com a tela apagada, permita a localização "o tempo todo" nas configurações.',
+    texto: `A localização só é enviada com o app aberto. Para funcionar com a tela apagada, permita a localização ${
+      Platform.OS === 'ios' ? '"Sempre"' : '"o tempo todo"'
+    } nas configurações.`,
   },
   sem_permissao: { tipo: 'erro', texto: 'Localização negada: a central não vai ver você no mapa.' },
 };

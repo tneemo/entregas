@@ -187,6 +187,30 @@ stateDiagram-v2
 - Depois de `em_rota`, cancelamento vira **devolução** (o item já saiu).
 - **Prazo de aceite** (opcional, por empresa, 1 a 60 min): gravado no pedido na atribuição (`pedidos.aceite_ate`); trocar de motoboy recomeça a contagem e qualquer outra mudança a encerra. Um cron a cada minuto devolve à fila os vencidos, com o evento `expirar_aceite` no nome do motoboy que não respondeu, e avisa o painel pelo `CentralEmpresa`. Ninguém executa essa ação pela API.
 
+### Lojas atendidas e despacho automático
+- **Lojas** (tabela `lojas`, por empresa): os clientes de quem faz motofrete. Cada uma tem endereço de coleta, telefone e a regra de **transbordo**. O pedido pode levar `loja_id`, e aí a coleta sai do endereço da loja.
+- **Motoboy fixo**: `vinculos.loja_id` preenchido. Ele recebe primeiro os pedidos daquela loja e nunca recebe pedido de outra loja ou sem loja. Com `loja_id` vazio, o motoboy é **livre** e roda a cidade toda.
+- **Modo de despacho** (por empresa, `empresas.modo_despacho`):
+  - **Manual** (padrão): a central escolhe, com a sugestão do mais perto na tela.
+  - **Automático**: o sistema oferece o pedido a um motoboy de cada vez (ação `oferecer`, só do sistema, com `pedidos.oferta_automatica`). O prazo para responder é curto (`empresas.oferta_segundos`, padrão 60 s).
+- **Quem recebe a oferta** (`escolherParaOferta` em `packages/shared/src/despacho.ts`, função pura):
+  - Pedido de loja com fixos: o melhor fixo dela. Com os fixos ocupados ou fora do turno, vai para os livres só se a loja tem transbordo; senão, espera.
+  - Pedido sem loja, ou de loja sem fixos: o livre de menor custo (o mesmo custo da sugestão: distância até a coleta + entregas na mão + sem notificação).
+  - Ninguém recebe duas ofertas ao mesmo tempo nem mais de 3 entregas na mão. Quem recusou ou deixou o prazo passar não recebe o mesmo pedido de novo (lido de `eventos_pedido`).
+  - Sem ninguém disponível, o pedido fica na fila e a central vê no painel.
+- **Onde roda**: dentro do `CentralEmpresa` da empresa (`despachar()`). O DO tem as últimas posições e faz uma rodada de cada vez, então duas rodadas não oferecem o mesmo motoboy. As rodadas começam:
+  - ao criar pedido sem motoboy, depois de cada ação no pedido (recusa, entrega que libera o motoboy), quando um motoboy abre o turno e quando a empresa liga o automático;
+  - pelo **alarme do DO**: no próximo prazo de oferta, e a cada 30 s enquanto houver fila sem ninguém disponível;
+  - pelo cron de cada minuto, como rede de segurança.
+  - A lógica de banco fica em `apps/api/src/dados/ofertas.ts`.
+- A central sempre pode atribuir, trocar ou tirar na mão; isso encerra a oferta automática.
+
+### Empresa de demonstração (testes e apresentações em produção)
+- Uma empresa marcada com `empresas.demonstracao`, criada pelo super admin no painel (**Empresas → Preparar demonstração**, `POST /admin/demonstracao`).
+- Vem com duas lojas fictícias em Cascavel e o despacho automático ligado. Todo super admin vira administrador; preparar de novo só completa e gera um convite de motoboy.
+- **Meu motoboy de teste** (`POST /admin/demonstracao/motoboy-teste`): conta separada, com celular fictício e senha mostrada uma vez, para o super admin entrar no app. É separada porque cada pessoa tem um papel só por empresa.
+- **Gerar entrega de teste** (`POST /admin/demonstracao/pedidos`): pedido "já pago" para um destinatário fictício. Passa por despacho, app, código e link de acompanhamento como qualquer outro.
+
 ### Comprovante de entrega
 - **Código de 4 dígitos** gerado por pedido, enviado ao destinatário junto com o link de rastreio. O motoboy digita para concluir; 5 erros bloqueiam a entrega pelo app e só a central confirma.
 - **Entrega sem o código** (ex.: deixou na portaria): só pelo app, com foto e "com quem ou onde ficou". Fica bloqueada junto com o código e aparece destacada no painel.
@@ -281,10 +305,10 @@ Monorepo com **npm workspaces**; TypeScript em tudo; testes com Vitest (`@cloudf
 |---|---|
 | **0 — Fundação** ✅ | Monorepo, Worker + D1, auth, camada multi-tenant com testes de isolamento, cadastro de empresas/usuários/vínculos, convites, painel (login, empresas, equipe, aceite de convite) |
 | **1 — Núcleo** | **Parte 1 ✅** pedidos pelo painel, ciclo de status com histórico, despacho manual, código de entrega (bloqueia após 5 erros), cadastro de clientes pelo telefone, endereço da empresa como coleta padrão, CEP via ViaCEP. **Parte 2 ✅** app Android do motoboy em Expo (login, turno único por pessoa, GPS em segundo plano com aviso fixo e fila offline, entregas, código, foto no R2), retenção de GPS de 90 dias por cron. Pendente: teste em aparelho real e notificação push. **Parte 3 ✅** Durable Object `CentralEmpresa` com WebSocket Hibernation, mapa ao vivo no painel (posições e turnos em tempo real, fila de pedidos atualizada sozinha), link público de rastreio `/r/<token>` (status, código, mapa do entregador só em rota, expira 48 h após concluir) e link + código no botão do WhatsApp. Mapa provisório em Leaflet + OpenStreetMap até existir a chave do Google Maps. **Parte 4 ✅** regras de entrega por empresa: foto obrigatória na falha e na entrega sem código (e, se a empresa quiser, em toda entrega), entrega sem código com foto, prazo de aceite com volta automática à fila |
-| **1.5 — Pronto para piloto** | **Parte 1 ✅** fundação de engenharia: Biome (lint + formatação + regra de isolamento), CI/CD no GitHub Actions, homologação com banco e fotos próprios, Sentry na API, painel e app, tela de erro no lugar de página em branco. **Parte 2 ✅** ponto no mapa em todo endereço: geocodificação (Google ou OpenStreetMap), confirmação do pino no painel, navegação por coordenada no app, alerta de entrega registrada longe do endereço. **Parte 3 ✅** notificação push para o motoboy (pedido atribuído, retirado, cancelado, prazo esgotado), presa à sessão, com aviso no painel de quem não recebe. **Parte 4 ✅** idempotência das ações (o app repete com a mesma chave quando o sinal cai), observabilidade, visão geral com indicadores, despacho sugerido, histórico com busca, avaliação do cliente e previsão de chegada no link, tema escuro, avisos em tempo real e busca rápida no painel, ambiente de demonstração. **A seguir:** fila offline persistente das ações (a chave de idempotência já existe), recuperação de senha (com domínio e e-mail transacional), alerta de GPS parado e orientação de bateria nos celulares que matam o app, registro do pacote no Android Developer Console |
+| **1.5 — Pronto para piloto** | **Parte 1 ✅** fundação de engenharia: Biome (lint + formatação + regra de isolamento), CI/CD no GitHub Actions, homologação com banco e fotos próprios, Sentry na API, painel e app, tela de erro no lugar de página em branco. **Parte 2 ✅** ponto no mapa em todo endereço: geocodificação (Google ou OpenStreetMap), confirmação do pino no painel, navegação por coordenada no app, alerta de entrega registrada longe do endereço. **Parte 3 ✅** notificação push para o motoboy (pedido atribuído, retirado, cancelado, prazo esgotado), presa à sessão, com aviso no painel de quem não recebe. **Parte 4 ✅** idempotência das ações (o app repete com a mesma chave quando o sinal cai), observabilidade, visão geral com indicadores, despacho sugerido, histórico com busca, avaliação do cliente e previsão de chegada no link, tema escuro, avisos em tempo real e busca rápida no painel, ambiente de demonstração. **Parte 5 ✅** lojas atendidas, motoboys fixos e livres, despacho automático em cascata (oferta com prazo curto, transbordo, alarme do Durable Object), empresa de demonstração em produção para os super admins (motoboy de teste e entrega de teste), app pronto para iPhone (docs/IOS.md) e programa de computador para a central (desktop/). **A seguir:** portal da loja (a loja lança os próprios pedidos), relatório de onde o fluxo trava (tempo em cada etapa, recusas, ofertas sem resposta), fila offline persistente das ações (a chave de idempotência já existe), fila offline persistente das ações (a chave de idempotência já existe), recuperação de senha (com domínio e e-mail transacional), alerta de GPS parado e orientação de bateria nos celulares que matam o app, registro do pacote no Android Developer Console |
 | **2 — Dinheiro** | Cobrança na entrega, acerto, remuneração, frete por km, comissão + fatura mensal |
 | **3 — Entradas** | Link público de pedido, portal do cliente contratante, API pública + webhooks |
-| **4 — Integrações** | iFood (requer cadastro e homologação no portal de desenvolvedores do iFood), PDVs, despacho automático, roteirização multi-paradas, WhatsApp API oficial, Pix dinâmico |
+| **4 — Integrações** | iFood (requer cadastro e homologação no portal de desenvolvedores do iFood), PDVs, roteirização multi-paradas, WhatsApp API oficial, Pix dinâmico |
 
 **MVP para piloto em Cascavel = Fases 0 a 3.** A Fase 4 depende de aprovações externas (iFood, Meta).
 
@@ -296,6 +320,7 @@ Monorepo com **npm workspaces**; TypeScript em tudo; testes com Vitest (`@cloudf
 - [ ] Nome da plataforma e domínio.
 - [x] Conta Cloudflare: API e painel publicados em `entregas.tneemo.com` (ambiente `producao`). Falta assinar o Workers Paid antes do piloto (o login gasta ~25 ms de CPU).
 - [ ] Conta Google Cloud com faturamento para as APIs de mapas.
+- [ ] Apple Developer Program (US$ 99/ano) para o app no iPhone; passos em [IOS.md](IOS.md).
 - [ ] Conta de desenvolvedor Google Play (ou piloto com APK). Desde 30/09/2026 o Brasil exige verificação de desenvolvedor: registrar o pacote `br.com.entregas.motoboy` no Android Developer Console mesmo distribuindo APK.
 - [ ] Token da Cloudflare no GitHub (`CLOUDFLARE_API_TOKEN`) para o CI publicar; ver README.
 - [ ] Conta no Sentry (plano gratuito serve no piloto) e os DSNs nos três lugares; ver README.

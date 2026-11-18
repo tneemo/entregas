@@ -5,6 +5,7 @@ import { expurgarPosicoes } from './dados/escopo-turno.ts';
 import { expirarAceites } from './dados/escopo-pedidos.ts';
 import { expurgarIdempotencia } from './dados/idempotencia.ts';
 import { central } from './central/avisar.ts';
+import { empresasComFilaAutomatica } from './dados/ofertas.ts';
 import { avisos, notificar } from './notificacoes.ts';
 
 /** Os mesmos textos de "triggers.crons" no wrangler.jsonc. */
@@ -41,6 +42,17 @@ export async function vencerPrazosDeAceite(env: Env) {
     ),
   ]);
   if (voltaram.length > 0) console.log(`Prazo de aceite esgotado: ${voltaram.length} pedido(s) de volta à fila`);
+
+  // Rede de segurança do despacho automático: o alarme de cada central já cuida disso, mas
+  // se algum se perder, a fila não fica parada mais de um minuto.
+  const empresasComFila = await empresasComFilaAutomatica(db);
+  await Promise.all(
+    empresasComFila.map((empresaId) =>
+      central(env, empresaId)
+        .despachar(empresaId)
+        .catch((erro) => console.error('despacho automático: rodada falhou', erro)),
+    ),
+  );
   return voltaram;
 }
 

@@ -7,6 +7,8 @@ import {
   normalizarTelefone,
   podeConvidar,
   schemaAtualizarDadosEmpresa,
+  schemaAtualizarLoja,
+  schemaCriarLoja,
   schemaAtualizarMembro,
   schemaCriarConvite,
   schemaEndereco,
@@ -19,7 +21,9 @@ import { exigirEmpresa } from '../middleware/empresa.ts';
 import { escopoEmpresa } from '../dados/escopo-empresa.ts';
 import { escopoPedidos } from '../dados/escopo-pedidos.ts';
 import { escopoIndicadores } from '../dados/indicadores.ts';
+import { escopoLojas } from '../dados/escopo-lojas.ts';
 import { comLocalizacao, geocodificar } from '../geocodificacao.ts';
+import { avisar } from '../central/avisar.ts';
 
 const escopo = (c: { var: AppEnv['Variables'] }) => escopoEmpresa(c.var.db, c.var.empresa);
 
@@ -30,7 +34,13 @@ export const rotasEmpresa = new Hono<AppEnv>()
     const dados = await lerCorpo(c, schemaAtualizarDadosEmpresa);
     // Endereço da loja é o ponto de coleta padrão: sem pino marcado, tenta achar pelo texto.
     if (dados.endereco) dados.endereco = await comLocalizacao(c.env, dados.endereco);
-    return c.json(await escopo(c).atualizarDados(dados));
+    const atualizada = await escopo(c).atualizarDados(dados);
+    // Ligou o automático (ou mudou o tempo da oferta): a fila que já existe entra na rodada.
+    if (dados.modoDespacho || dados.ofertaSegundos) {
+      const { empresaId } = c.var.empresa;
+      avisar(c, empresaId, (central) => central.despachar(empresaId));
+    }
+    return c.json(atualizada);
   })
 
   /** Busca o ponto no mapa de um endereço digitado (painel: novo pedido, dados da empresa). */
@@ -44,6 +54,23 @@ export const rotasEmpresa = new Hono<AppEnv>()
     const dias = PERIODOS_INDICADORES.find((d) => String(d) === (c.req.query('dias') ?? '7'));
     if (!dias) throw naoEncontrado('Período inválido.');
     return c.json(await escopoIndicadores(c.var.db, c.var.empresa).resumo(dias));
+  })
+
+  /** Lojas atendidas: ponto de coleta, motoboys fixos e transbordo para os livres. */
+  .get('/lojas', exigirEmpresa('admin', 'despachante'), async (c) =>
+    c.json(await escopoLojas(c.var.db, c.var.empresa).listar()),
+  )
+
+  .post('/lojas', exigirEmpresa('admin'), async (c) => {
+    const dados = await lerCorpo(c, schemaCriarLoja);
+    dados.endereco = await comLocalizacao(c.env, dados.endereco);
+    return c.json(await escopoLojas(c.var.db, c.var.empresa).criar(dados), 201);
+  })
+
+  .patch('/lojas/:lojaId', exigirEmpresa('admin'), async (c) => {
+    const dados = await lerCorpo(c, schemaAtualizarLoja);
+    if (dados.endereco) dados.endereco = await comLocalizacao(c.env, dados.endereco);
+    return c.json(await escopoLojas(c.var.db, c.var.empresa).atualizar(c.req.param('lojaId'), dados));
   })
 
   .get('/motoboys', exigirEmpresa('admin', 'despachante'), async (c) =>

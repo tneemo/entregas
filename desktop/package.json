@@ -1,0 +1,72 @@
+{
+  "name": "entregas-desktop",
+  "productName": "Entregas Central",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Programa de computador da central: abre o painel do Entregas numa janela própria.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tneemo/entregas.git"
+  },
+  "desktopName": "entregas-central.desktop",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "homologacao": "electron . --homologacao",
+    "instalador": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.3.4",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "br.com.entregas.central",
+    "productName": "Entregas Central",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Entregas Central"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "category": "public.app-category.business",
+      "identity": null
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office",
+      "syncDesktopName": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "tneemo",
+      "repo": "entregas"
+    }
+  }
+}

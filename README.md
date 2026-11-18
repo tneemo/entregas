@@ -8,7 +8,8 @@ Decisões, pesquisa e roteiro em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 ```
 apps/api      Worker da Cloudflare (Hono + D1): API em /api/v1 e entrega do painel
 apps/painel   Painel web (React + Vite + Tailwind)
-apps/motoboy  App Android do motoboy (Expo + expo-router)
+apps/motoboy  App do motoboy, Android e iPhone (Expo + expo-router; iPhone em docs/IOS.md)
+desktop/      Programa de computador da central (Electron, abre o painel); instaladores pelo GitHub Actions
 packages/shared  Validações (CPF, CNPJ alfanumérico, telefone), schemas e tipos da API
 ```
 
@@ -70,7 +71,21 @@ O último comando cria a empresa e os pedidos, mostra as contas para entrar (a s
 `apps/api/scripts/demo.mjs`) e continua movendo os motoboys até Ctrl+C. Só funciona em banco vazio: para
 recomeçar, apague `apps/api/.wrangler/demo` e prepare de novo.
 
+## Testar e apresentar em produção
+
+Em **Empresas** (super admin), o bloco **Empresa de demonstração**:
+
+1. **Preparar demonstração**: cria a empresa (duas lojas fictícias, despacho automático) e dá acesso de
+   administrador a todos os super admins. Também gera um convite de motoboy para mandar a quem vai testar.
+2. **Meu motoboy de teste**: login e senha para entrar no app do motoboy com uma conta de teste.
+3. **Gerar entrega de teste**: cria um pedido fictício. Com o motoboy de teste em turno, a oferta chega no
+   celular; aceite, colete e entregue com o código mostrado na tela.
+
 ## O que o painel faz além da fila
+
+- **Lojas e despacho automático**: em **Lojas**, cadastre as lojas atendidas e, em **Equipe**, marque quem é
+  motoboy fixo de qual loja. Em **Dados da empresa → Despacho**, o modo automático oferece cada pedido ao melhor
+  motoboy (fixo da loja primeiro, depois o livre mais perto da coleta) e passa ao próximo na recusa ou sem resposta.
 
 - **Despacho sugerido**: em cada pedido aguardando, um botão chama o motoboy em turno mais perto da coleta e com
   menos entregas (cálculo em `packages/shared/src/despacho.ts`, refeito a cada posição nova).

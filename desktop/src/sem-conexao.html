@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+    <title>Sem conexão</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fundo: #f5f6f7;
+        --texto: #1e2529;
+        --apoio: #5b666d;
+        --botao: #1e2529;
+        --botao-texto: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fundo: #161b1e;
+          --texto: #e8ecee;
+          --apoio: #9aa6ad;
+          --botao: #f2c94c;
+          --botao-texto: #1e2529;
+        }
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: var(--fundo);
+        color: var(--texto);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      main {
+        max-width: 28rem;
+        padding: 1.5rem;
+        text-align: center;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0 0 0.5rem;
+      }
+      p {
+        color: var(--apoio);
+        line-height: 1.5;
+      }
+      button {
+        margin-top: 1rem;
+        min-height: 2.75rem;
+        padding: 0 1.5rem;
+        border: 0;
+        border-radius: 0.5rem;
+        background: var(--botao);
+        color: var(--botao-texto);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Sem conexão com o Entregas</h1>
+      <p>Confira a internet deste computador. Assim que voltar, toque em tentar de novo.</p>
+      <button type="button" id="tentar">Tentar de novo</button>
+    </main>
+    <script>
+      const voltar = new URLSearchParams(location.search).get('voltar');
+      const tentar = () => {
+        if (voltar && /^https?:\/\//.test(voltar)) location.href = voltar;
+      };
+      document.getElementById('tentar').addEventListener('click', tentar);
+      // Tenta sozinho quando o sistema avisa que a internet voltou.
+      window.addEventListener('online', tentar);
+    </script>
+  </body>
+</html>

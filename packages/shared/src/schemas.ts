@@ -8,7 +8,7 @@ import {
   validarCpf,
 } from './validacao.ts';
 import { PAPEIS, STATUS_EMPRESA, STATUS_VINCULO, TIPOS_EMPRESA, TIPOS_VINCULO } from './papeis.ts';
-import { ACOES_PEDIDO, FORMAS_PAGAMENTO } from './pedidos.ts';
+import { ACOES_PEDIDO, FORMAS_PAGAMENTO, MODOS_DESPACHO } from './pedidos.ts';
 import { FONTES_LOCALIZACAO, PRECISOES_LOCALIZACAO } from './localizacao.ts';
 
 // Campos reutilizáveis ------------------------------------------------------
@@ -90,6 +90,8 @@ export const schemaAtualizarMembro = z
     papel: z.enum(PAPEIS).optional(),
     status: z.enum(STATUS_VINCULO).optional(),
     tipoVinculo: z.enum(TIPOS_VINCULO).nullable().optional(),
+    /** Motoboy fixo desta loja; null = livre (roda a cidade toda). Só vale para motoboys. */
+    lojaId: z.string().min(1).nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'Nada para atualizar.');
 
@@ -182,8 +184,39 @@ export const schemaAtualizarDadosEmpresa = z
       .max(60, 'O prazo máximo é 60 minutos.')
       .nullable()
       .optional(),
+    modoDespacho: z.enum(MODOS_DESPACHO).optional(),
+    ofertaSegundos: z
+      .number()
+      .int('Use segundos inteiros.')
+      .min(15, 'O tempo mínimo para responder é 15 segundos.')
+      .max(600, 'O tempo máximo para responder é 10 minutos.')
+      .optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'Nada para atualizar.');
+
+// Lojas atendidas ------------------------------------------------------------
+
+/** Loja que a empresa atende: ponto de coleta, motoboys fixos e regra de transbordo. */
+export const schemaCriarLoja = z.object({
+  nome,
+  telefone: campoTelefone.optional(),
+  endereco: schemaEndereco,
+  /** Fixos todos ocupados: oferece aos motoboys livres em vez de esperar. */
+  transbordo: z.boolean().default(true),
+});
+
+export const schemaAtualizarLoja = z
+  .object({
+    nome: nome.optional(),
+    telefone: campoTelefone.nullable().optional(),
+    endereco: schemaEndereco.optional(),
+    transbordo: z.boolean().optional(),
+    ativa: z.boolean().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, 'Nada para atualizar.');
+
+export type DadosCriarLoja = z.input<typeof schemaCriarLoja>;
+export type DadosAtualizarLoja = z.input<typeof schemaAtualizarLoja>;
 
 // Pedidos --------------------------------------------------------------------
 
@@ -215,6 +248,8 @@ export const schemaCriarPedido = z
     observacoes: textoOpcional(500),
     /** Já atribui ao motoboy na criação. */
     motoboyVinculoId: z.string().min(1).optional(),
+    /** Loja atendida de onde sai o pedido: decide quem são os motoboys fixos. */
+    lojaId: z.string().min(1).optional(),
   })
   .superRefine((p, ctx) => {
     if (p.formaPagamento === 'pago' && p.valorACobrarCentavos !== 0) {

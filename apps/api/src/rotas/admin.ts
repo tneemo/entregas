@@ -10,6 +10,7 @@ import {
   schemaCriarEmpresa,
   type CidadeResposta,
   type CriarEmpresaResposta,
+  type DemonstracaoResposta,
 } from '@entregas/shared';
 import type { AppEnv } from '../tipos.ts';
 import { violouUnicidade } from '../db/index.ts';
@@ -19,6 +20,8 @@ import { lerCorpo } from '../validar.ts';
 import { exigirSuperAdmin } from '../middleware/sessao.ts';
 import { criarConvite } from '../dados/convites.ts';
 import { empresaResposta } from '../dados/formatos.ts';
+import { criarEntregaDeTeste, motoboyDeTeste, prepararDemonstracao } from '../dados/demonstracao.ts';
+import { avisar } from '../central/avisar.ts';
 
 const cidadeResposta = (c: typeof cidades.$inferSelect): CidadeResposta => ({
   id: c.id,
@@ -96,6 +99,27 @@ export const rotasAdmin = new Hono<AppEnv>()
     const cidade = await db.select().from(cidades).where(eq(cidades.id, atualizada.cidadeId)).get();
     return c.json(empresaResposta(atualizada, cidade!));
   })
+
+  /**
+   * Empresa de demonstração (dados fictícios) para testar e apresentar em produção. Cria na
+   * primeira vez; depois só completa (lojas, acesso de super admins novos) e gera outro convite.
+   */
+  .post('/demonstracao', async (c) =>
+    c.json<DemonstracaoResposta>(await prepararDemonstracao(c.var.db, c.var.usuario!.id), 201),
+  )
+
+  /** Entrega de teste na demonstração: segue o fluxo real (despacho, app, código, rastreio). */
+  .post('/demonstracao/pedidos', async (c) => {
+    const { empresaId, pedido } = await criarEntregaDeTeste(c.var.db, c.var.usuario!.id);
+    avisar(c, empresaId, async (central) => {
+      await central.mudouPedido(pedido.id, pedido.status, null);
+      await central.despachar(empresaId);
+    });
+    return c.json(pedido, 201);
+  })
+
+  /** Conta de motoboy de teste do super admin (para entrar no app e receber as entregas de teste). */
+  .post('/demonstracao/motoboy-teste', async (c) => c.json(await motoboyDeTeste(c.var.db, c.var.usuario!), 201))
 
   /** Novo convite para uma empresa (ex.: o link do admin expirou). */
   .post('/empresas/:id/convites', async (c) => {
