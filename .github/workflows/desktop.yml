@@ -1,0 +1,64 @@
+# Instaladores do programa de computador da central (desktop/): Windows, macOS e Linux.
+# Roda à mão (botão "Run workflow" em Actions → Desktop) ou ao criar uma tag desktop-v* (ex.: desktop-v0.1.0).
+# Os instaladores ficam como artefatos da execução (Actions → a execução → Artifacts), por 30 dias.
+#
+# Sem assinatura de código: o Windows (SmartScreen) e o macOS (Gatekeeper) avisam na primeira abertura.
+# Ver desktop/README.md.
+name: Desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["desktop-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  instalador:
+    name: Instalador ${{ matrix.sistema }}
+    runs-on: ${{ matrix.maquina }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sistema: windows
+            maquina: windows-latest
+            alvo: --win
+          - sistema: macos
+            maquina: macos-latest
+            alvo: --mac
+          - sistema: linux
+            maquina: ubuntu-latest
+            alvo: --linux
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+
+      - name: Gerar instalador
+        run: npx electron-builder ${{ matrix.alvo }} --publish never
+        env:
+          # Sem certificado: não tenta assinar nem procurar identidade no chaveiro do macOS.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entregas-central-${{ matrix.sistema }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.dmg
+            desktop/dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 30

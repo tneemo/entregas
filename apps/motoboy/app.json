@@ -7,6 +7,23 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "owner": "unktneemo",
+    "ios": {
+      "bundleIdentifier": "br.com.entregas.motoboy",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "UIBackgroundModes": ["location", "remote-notification"],
+        "NSLocationWhenInUseUsageDescription": "Sua localização é usada para registrar onde cada etapa da entrega aconteceu.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Durante o turno, sua localização é enviada à empresa para acompanhar as entregas, inclusive com a tela apagada. Ao encerrar o turno, o envio para.",
+        "NSLocationAlwaysUsageDescription": "Durante o turno, sua localização é enviada à empresa para acompanhar as entregas, inclusive com a tela apagada. Ao encerrar o turno, o envio para.",
+        "NSCameraUsageDescription": "A câmera é usada para fotografar o comprovante de entrega.",
+        "LSApplicationQueriesSchemes": ["comgooglemaps", "waze"],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
     "android": {
       "package": "br.com.entregas.motoboy",
       "permissions": [
@@ -29,10 +46,12 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Durante o turno, sua localização é enviada à empresa para acompanhar as entregas. Ao encerrar o turno, o envio para.",
+          "locationAlwaysAndWhenInUsePermission": "Durante o turno, sua localização é enviada à empresa para acompanhar as entregas, inclusive com a tela apagada. Ao encerrar o turno, o envio para.",
           "locationWhenInUsePermission": "Sua localização é usada para registrar onde cada etapa da entrega aconteceu.",
           "isAndroidBackgroundLocationEnabled": true,
-          "isAndroidForegroundServiceEnabled": true
+          "isAndroidForegroundServiceEnabled": true,
+          "locationAlwaysPermission": "Durante o turno, sua localização é enviada à empresa para acompanhar as entregas, inclusive com a tela apagada. Ao encerrar o turno, o envio para.",
+          "isIosBackgroundLocationEnabled": true
         }
       ],
       [
@@ -47,7 +66,8 @@
         "expo-notifications",
         {
           "color": "#0b3d91",
-          "defaultChannel": "pedidos"
+          "defaultChannel": "pedidos",
+          "enableBackgroundRemoteNotifications": true
         }
       ],
       "@sentry/react-native"

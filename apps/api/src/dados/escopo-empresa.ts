@@ -20,6 +20,7 @@ import { cidades, convites, empresas, usuarios, vinculos } from '../db/schema.ts
 import type { ContextoEmpresa } from '../tipos.ts';
 import { naoEncontrado } from '../erros.ts';
 import { criarConvite } from './convites.ts';
+import { escopoLojas } from './escopo-lojas.ts';
 import { empresaResposta } from './formatos.ts';
 
 export function escopoEmpresa(db: Db, ctx: ContextoEmpresa) {
@@ -30,6 +31,7 @@ export function escopoEmpresa(db: Db, ctx: ContextoEmpresa) {
     papel: vinculos.papel,
     status: vinculos.status,
     tipoVinculo: vinculos.tipoVinculo,
+    lojaId: vinculos.lojaId,
     criadoEm: vinculos.criadoEm,
     usuarioId: usuarios.id,
     nome: usuarios.nome,
@@ -51,6 +53,8 @@ export function escopoEmpresa(db: Db, ctx: ContextoEmpresa) {
       endereco: e.endereco ?? null,
       fotoEntregaObrigatoria: e.fotoEntregaObrigatoria,
       prazoAceiteMin: e.prazoAceiteMin,
+      modoDespacho: e.modoDespacho,
+      ofertaSegundos: e.ofertaSegundos,
     };
   };
 
@@ -71,6 +75,7 @@ export function escopoEmpresa(db: Db, ctx: ContextoEmpresa) {
     tipoVinculo: l.tipoVinculo,
     entrouEm: l.criadoEm.toISOString(),
     usuario: { id: l.usuarioId, nome: l.nome, email: l.email, telefone: l.telefone },
+    lojaId: l.lojaId,
   });
 
   const obterMembro = async (vinculoId: string): Promise<MembroResposta> => {
@@ -110,10 +115,13 @@ export function escopoEmpresa(db: Db, ctx: ContextoEmpresa) {
       // Tipo de vínculo (CLT/MEI/freelancer) só se aplica a motoboys.
       const tipoVinculo =
         papelFinal === 'motoboy' ? (dados.tipoVinculo !== undefined ? dados.tipoVinculo : atual.tipoVinculo) : null;
+      // Loja fixa também só vale para motoboy; quem deixa de ser motoboy volta a não ter loja.
+      let lojaId = papelFinal === 'motoboy' ? (dados.lojaId !== undefined ? dados.lojaId : atual.lojaId) : null;
+      if (lojaId && lojaId !== atual.lojaId) lojaId = (await escopoLojas(db, ctx).exigirAtiva(lojaId, 'lojaId')).id;
 
       await db
         .update(vinculos)
-        .set({ papel: papelFinal, status: dados.status ?? atual.status, tipoVinculo })
+        .set({ papel: papelFinal, status: dados.status ?? atual.status, tipoVinculo, lojaId })
         .where(and(eq(vinculos.id, vinculoId), eq(vinculos.empresaId, empresaId)));
       return obterMembro(vinculoId);
     },

@@ -22,6 +22,7 @@ import {
   paraEnderecoForm,
   rotuloMotoboy,
   useDadosEmpresa,
+  useLojas,
   useMotoboys,
   type EnderecoForm,
 } from '../componentes/pedido.tsx';
@@ -41,6 +42,10 @@ export function NovoPedido() {
   const consultas = useQueryClient();
   const empresa = useDadosEmpresa(empresaId);
   const motoboys = useMotoboys(empresaId);
+  const lojas = useLojas(empresaId);
+  const lojasAtivas = useMemo(() => lojas.data?.filter((l) => l.ativa) ?? [], [lojas.data]);
+  const [lojaId, setLojaId] = useState('');
+  const loja = lojasAtivas.find((l) => l.id === lojaId);
   const aoVivo = useAoVivo(empresaId);
   // Uma chave por pedido digitado: clicar duas vezes ou repetir depois de uma queda de
   // internet não cria o mesmo pedido de novo.
@@ -67,7 +72,9 @@ export function NovoPedido() {
   const dados = empresa.data;
   const enderecoEmpresa = dados?.endereco;
   // Empresa de motofrete coleta no cliente contratante; loja coleta no próprio endereço.
-  const coletaNoProprioEndereco = dados?.tipo === 'loja' && Boolean(enderecoEmpresa) && !coletaPropria;
+  // Com uma loja atendida escolhida, a coleta é sempre no endereço dela.
+  const coletaNoProprioEndereco = !loja && dados?.tipo === 'loja' && Boolean(enderecoEmpresa) && !coletaPropria;
+  const automatico = dados?.modoDespacho === 'automatico';
 
   useEffect(() => {
     if (!dados) return;
@@ -129,9 +136,12 @@ export function NovoPedido() {
     }
     setErroLocal(null);
     criar.mutate({
-      coleta: coletaNoProprioEndereco
-        ? { nome: dados!.nomeFantasia, telefone: dados!.telefone ?? undefined, endereco: enderecoEmpresa! }
-        : { nome: coletaNome, telefone: coletaTelefone || undefined, endereco: coleta },
+      lojaId: loja?.id,
+      coleta: loja
+        ? { nome: loja.nome, telefone: loja.telefone ?? undefined, endereco: loja.endereco }
+        : coletaNoProprioEndereco
+          ? { nome: dados!.nomeFantasia, telefone: dados!.telefone ?? undefined, endereco: enderecoEmpresa! }
+          : { nome: coletaNome, telefone: coletaTelefone || undefined, endereco: coleta },
       entrega: { nome, telefone, endereco: entrega },
       formaPagamento: forma,
       valorACobrarCentavos: centavos.valor!,
@@ -144,12 +154,21 @@ export function NovoPedido() {
 
   const erro = erroLocal ?? criar.error;
 
-  // Quem está mais perto do ponto de coleta e com menos entregas na mão.
-  const pontoColeta = (coletaNoProprioEndereco ? enderecoEmpresa?.localizacao : coleta.localizacao) ?? null;
-  const sugestao = useMemo(
-    () => (motoboys.data ? sugerirMotoboys(pontoColeta, motoboys.data, aoVivo.motoboys)[0] : undefined),
-    [motoboys.data, aoVivo.motoboys, pontoColeta],
-  );
+  // Quem está mais perto do ponto de coleta e com menos entregas na mão. Com loja: os fixos dela
+  // primeiro; sem fixo em turno (e com transbordo), os livres. Sem loja: os livres.
+  const pontoColeta =
+    (loja ? loja.endereco.localizacao : coletaNoProprioEndereco ? enderecoEmpresa?.localizacao : coleta.localizacao) ??
+    null;
+  const sugestao = useMemo(() => {
+    if (!motoboys.data) return undefined;
+    const livres = motoboys.data.filter((m) => m.lojaId === null);
+    let candidatos = livres;
+    if (loja) {
+      const fixos = motoboys.data.filter((m) => m.lojaId === loja.id);
+      candidatos = fixos.some((m) => m.emTurno) || (fixos.length > 0 && !loja.transbordo) ? fixos : livres;
+    }
+    return sugerirMotoboys(pontoColeta, candidatos, aoVivo.motoboys)[0];
+  }, [motoboys.data, aoVivo.motoboys, pontoColeta, loja]);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -186,7 +205,35 @@ export function NovoPedido() {
         </Secao>
 
         <Secao titulo="Coleta">
-          {coletaNoProprioEndereco ? (
+          {lojasAtivas.length > 0 && (
+            <div className="max-w-md">
+              <Selecao
+                rotulo="Loja"
+                value={lojaId}
+                onChange={(e) => setLojaId(e.target.value)}
+                erro={erroDoCampo(erro, 'lojaId')}
+              >
+                <option value="">Sem loja (coleta avulsa)</option>
+                {lojasAtivas.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nome}
+                  </option>
+                ))}
+              </Selecao>
+            </div>
+          )}
+          {loja ? (
+            <p>
+              Na {loja.nome}: {enderecoEmLinha(loja.endereco)}.
+              {loja.fixos.length > 0 && (
+                <span className="text-concreto">
+                  {' '}
+                  {loja.fixos.length === 1 ? 'Motoboy fixo' : 'Motoboys fixos'}:{' '}
+                  {loja.fixos.map((f) => f.nome).join(', ')}.
+                </span>
+              )}
+            </p>
+          ) : coletaNoProprioEndereco ? (
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p>
                 Na {dados!.nomeFantasia}: {enderecoEmLinha(enderecoEmpresa!)}.
@@ -274,13 +321,22 @@ export function NovoPedido() {
             onChange={(e) => setMotoboy(e.target.value)}
             erro={erroDoCampo(erro, 'motoboyVinculoId')}
           >
-            <option value="">Deixar aguardando motoboy</option>
+            <option value="">
+              {automatico ? 'Deixar o sistema oferecer automaticamente' : 'Deixar aguardando motoboy'}
+            </option>
             {motoboys.data?.map((m) => (
               <option key={m.vinculoId} value={m.vinculoId}>
                 {rotuloMotoboy(m)}
               </option>
             ))}
           </Selecao>
+          {automatico && !motoboy && (
+            <p className="-mt-2 rounded border-l-4 border-mercosul bg-superficie px-3 py-2 text-sm">
+              Despacho automático ligado: sem motoboy escolhido, o sistema oferece o pedido ao melhor disponível
+              {loja && loja.fixos.length > 0 ? ' (primeiro os fixos da loja)' : ''} e passa ao próximo se ele recusar ou
+              não responder em {dados!.ofertaSegundos} s.
+            </p>
+          )}
           {sugestao && sugestao.vinculoId !== motoboy && (
             <p className="-mt-2 flex flex-wrap items-center gap-x-2 text-sm text-concreto">
               Sugestão: {sugestao.nome}

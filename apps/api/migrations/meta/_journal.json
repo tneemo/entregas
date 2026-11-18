@@ -57,6 +57,13 @@
       "when": 1794395807486,
       "tag": "0007_avaliacoes_idempotencia",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795022344161,
+      "tag": "0008_lojas_despacho",
+      "breakpoints": true
     }
   ]
 }

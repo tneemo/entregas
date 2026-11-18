@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Linking, ScrollView, Text, View } from 'react-native';
+import { Image, Linking, Platform, ScrollView, Text, View } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -68,21 +68,40 @@ function enderecoTexto(p: ParadaResposta) {
  * Para onde o GPS leva. Com o ponto exato (marcado no mapa pela central ou achado no número),
  * vai pela coordenada: chega na porta mesmo com nome de rua escrito diferente. Com ponto
  * aproximado (só a rua), o texto do endereço costuma ser melhor para o próprio Google/Waze.
+ *
+ * `app`: endereço que abre direto o aplicativo no iPhone (no Android o link https já abre o app).
+ * `web`: link https, usado no Android e quando o app não está instalado no iPhone.
  */
 function destinos(parada: ParadaResposta) {
   const l = parada.endereco.localizacao;
   if (localizacaoExata(l)) {
     const ponto = `${l.latitude},${l.longitude}`;
     return {
-      google: `https://www.google.com/maps/dir/?api=1&destination=${ponto}&travelmode=driving`,
-      waze: `https://waze.com/ul?ll=${ponto}&navigate=yes`,
+      google: {
+        app: `comgooglemaps://?daddr=${ponto}&directionsmode=driving`,
+        web: `https://www.google.com/maps/dir/?api=1&destination=${ponto}&travelmode=driving`,
+      },
+      waze: { app: `waze://?ll=${ponto}&navigate=yes`, web: `https://waze.com/ul?ll=${ponto}&navigate=yes` },
+      apple: `https://maps.apple.com/?daddr=${ponto}&dirflg=d`,
     };
   }
   const texto = encodeURIComponent(enderecoTexto(parada));
   return {
-    google: `https://www.google.com/maps/dir/?api=1&destination=${texto}&travelmode=driving`,
-    waze: `https://waze.com/ul?q=${texto}&navigate=yes`,
+    google: {
+      app: `comgooglemaps://?daddr=${texto}&directionsmode=driving`,
+      web: `https://www.google.com/maps/dir/?api=1&destination=${texto}&travelmode=driving`,
+    },
+    waze: { app: `waze://?q=${texto}&navigate=yes`, web: `https://waze.com/ul?q=${texto}&navigate=yes` },
+    apple: `https://maps.apple.com/?daddr=${texto}&dirflg=d`,
   };
+}
+
+/** No iPhone tenta o aplicativo instalado (LSApplicationQueriesSchemes no app.json); senão, o link https. */
+async function navegar(link: { app: string; web: string }) {
+  if (Platform.OS === 'ios' && (await Linking.canOpenURL(link.app).catch(() => false))) {
+    return Linking.openURL(link.app);
+  }
+  return Linking.openURL(link.web);
 }
 
 function Parada({ titulo, parada }: { titulo: string; parada: ParadaResposta }) {
@@ -96,11 +115,16 @@ function Parada({ titulo, parada }: { titulo: string; parada: ParadaResposta }) 
       {aproximado ? <Text style={texto.apoio}>Local aproximado no mapa: confira o número na rua.</Text> : null}
       <View style={{ flexDirection: 'row', gap: espaco.p, flexWrap: 'wrap' }}>
         <View style={{ flexGrow: 1 }}>
-          <Botao titulo="Google Maps" variante="secundario" aoTocar={() => Linking.openURL(links.google)} />
+          <Botao titulo="Google Maps" variante="secundario" aoTocar={() => navegar(links.google)} />
         </View>
         <View style={{ flexGrow: 1 }}>
-          <Botao titulo="Waze" variante="secundario" aoTocar={() => Linking.openURL(links.waze)} />
+          <Botao titulo="Waze" variante="secundario" aoTocar={() => navegar(links.waze)} />
         </View>
+        {Platform.OS === 'ios' && (
+          <View style={{ flexGrow: 1 }}>
+            <Botao titulo="Mapas" variante="secundario" aoTocar={() => Linking.openURL(links.apple)} />
+          </View>
+        )}
       </View>
       {parada.telefone ? (
         <Botao

@@ -90,7 +90,11 @@ export const rotasPedidos = new Hono<AppEnv>()
     dados.entrega.endereco = entrega;
     const pedido = await escopo(c).criar(dados);
     const { empresaId } = c.var.empresa;
-    avisar(c, empresaId, (central) => central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null));
+    avisar(c, empresaId, async (central) => {
+      await central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null);
+      // Sem motoboy escolhido: no modo automático, a central já oferece a alguém.
+      if (!pedido.motoboy) await central.despachar(empresaId);
+    });
     if (pedido.motoboy) {
       avisarMotoboys(c, [
         { vinculoId: pedido.motoboy.vinculoId, aviso: (u) => avisos.novoPedido(u, empresaId, pedido) },
@@ -109,7 +113,12 @@ export const rotasPedidos = new Hono<AppEnv>()
     const { pedido, motoboyAntes } = await escopo(c).executar(c.req.param('pedidoId'), acao.data, dados);
     const { empresaId, papel } = c.var.empresa;
     // Avisa painel e rastreio; a resposta ao motoboy pode omitir dados, mas status e motoboy vêm sempre.
-    avisar(c, empresaId, (central) => central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null));
+    // Depois, nova rodada do despacho automático: o pedido pode ter voltado para a fila (recusa)
+    // ou o motoboy pode ter ficado livre para outro (entregou, devolveu).
+    avisar(c, empresaId, async (central) => {
+      await central.mudouPedido(pedido.id, pedido.status, pedido.motoboy?.vinculoId ?? null);
+      await central.despachar(empresaId);
+    });
     if (papel !== 'motoboy') avisarMotoboys(c, quemAvisar(empresaId, acao.data, pedido, motoboyAntes));
     return c.json(pedido);
   })

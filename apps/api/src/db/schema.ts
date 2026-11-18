@@ -9,6 +9,8 @@ import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from
 import {
   ACOES_PEDIDO,
   FORMAS_PAGAMENTO,
+  MODOS_DESPACHO,
+  OFERTA_SEGUNDOS_PADRAO,
   PAPEIS,
   STATUS_EMPRESA,
   STATUS_PEDIDO,
@@ -69,6 +71,11 @@ export const empresas = sqliteTable(
     /** Regras de entrega (RegrasEntrega em @entregas/shared). */
     fotoEntregaObrigatoria: integer('foto_entrega_obrigatoria', { mode: 'boolean' }).notNull().default(false),
     prazoAceiteMin: integer('prazo_aceite_min'),
+    /** Regras de despacho (RegrasDespacho em @entregas/shared). */
+    modoDespacho: text('modo_despacho', { enum: MODOS_DESPACHO }).notNull().default('manual'),
+    ofertaSegundos: integer('oferta_segundos').notNull().default(OFERTA_SEGUNDOS_PADRAO),
+    /** Empresa de demonstração da plataforma: dados fictícios, aberta aos super admins. */
+    demonstracao: integer('demonstracao', { mode: 'boolean' }).notNull().default(false),
     status: text('status', { enum: STATUS_EMPRESA }).notNull().default('ativa'),
     criadoEm: criadoEm(),
     atualizadoEm: atualizadoEm(),
@@ -159,13 +166,38 @@ export const vinculos = sqliteTable(
     papel: text('papel', { enum: PAPEIS }).notNull(),
     status: text('status', { enum: STATUS_VINCULO }).notNull().default('ativo'),
     tipoVinculo: text('tipo_vinculo', { enum: TIPOS_VINCULO }),
+    /** Motoboy fixo desta loja (recebe os pedidos dela primeiro); null = livre. */
+    lojaId: text('loja_id').references(() => lojas.id),
     criadoEm: criadoEm(),
     atualizadoEm: atualizadoEm(),
   },
   (t) => [
     uniqueIndex('vinculos_empresa_usuario_unq').on(t.empresaId, t.usuarioId),
     index('vinculos_usuario_idx').on(t.usuarioId),
+    index('vinculos_loja_idx').on(t.lojaId).where(sql`loja_id IS NOT NULL`),
   ],
+);
+
+/**
+ * Lojas que a empresa atende (clientes contratantes de quem faz motofrete). Cada uma tem o
+ * ponto de coleta, pode ter motoboys fixos e decide se, com os fixos ocupados, os livres pegam.
+ */
+export const lojas = sqliteTable(
+  'lojas',
+  {
+    id: id(),
+    empresaId: text('empresa_id')
+      .notNull()
+      .references(() => empresas.id),
+    nome: text('nome').notNull(),
+    telefone: text('telefone'),
+    endereco: text('endereco', { mode: 'json' }).$type<Endereco>().notNull(),
+    transbordo: integer('transbordo', { mode: 'boolean' }).notNull().default(true),
+    ativa: integer('ativa', { mode: 'boolean' }).notNull().default(true),
+    criadoEm: criadoEm(),
+    atualizadoEm: atualizadoEm(),
+  },
+  (t) => [index('lojas_empresa_idx').on(t.empresaId, t.nome)],
 );
 
 export const convites = sqliteTable(
@@ -221,6 +253,8 @@ export const pedidos = sqliteTable(
     status: text('status', { enum: STATUS_PEDIDO }).notNull().default('pendente'),
     motoboyVinculoId: text('motoboy_vinculo_id').references(() => vinculos.id),
     clienteId: text('cliente_id').references(() => clientes.id),
+    /** Loja atendida de onde sai o pedido (decide os motoboys fixos). */
+    lojaId: text('loja_id').references(() => lojas.id),
     formaPagamento: text('forma_pagamento', { enum: FORMAS_PAGAMENTO }).notNull(),
     valorACobrarCentavos: integer('valor_a_cobrar_centavos').notNull(),
     trocoParaCentavos: integer('troco_para_centavos'),
@@ -242,6 +276,8 @@ export const pedidos = sqliteTable(
      * mexe em quem já está esperando). Só preenchido enquanto o status é "atribuido".
      */
     aceiteAte: integer('aceite_ate', { mode: 'timestamp_ms' }),
+    /** Atribuído pelo despacho automático (oferta): some em qualquer outra mudança. */
+    ofertaAutomatica: integer('oferta_automatica', { mode: 'boolean' }).notNull().default(false),
     criadoPor: text('criado_por')
       .notNull()
       .references(() => usuarios.id),

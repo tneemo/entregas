@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ROTULOS,
@@ -8,10 +9,14 @@ import {
   type ConviteCriadoResposta,
   type CriarEmpresaResposta,
   type DadosCriarEmpresa,
+  type DemonstracaoResposta,
   type EmpresaResposta,
+  type MotoboyTesteResposta,
+  type PedidoDetalhe,
   type TipoEmpresa,
 } from '@entregas/shared';
-import { api } from '../api.ts';
+import { api, novaChave } from '../api.ts';
+import { lembrarEmpresa } from '../sessao.ts';
 import { LinkConvite } from '../componentes/LinkConvite.tsx';
 import { AvisoErro, Botao, Campo, Selecao, Situacao, erroDoCampo } from '../componentes/ui.tsx';
 
@@ -122,6 +127,97 @@ function CadastrarEmpresa({ aoCadastrar }: { aoCadastrar: (r: CriarEmpresaRespos
   );
 }
 
+/**
+ * Empresa de demonstração: dados fictícios em produção, para testar e apresentar sem tocar
+ * na operação de ninguém. Todo super admin é administrador dela.
+ */
+function Demonstracao({ empresa }: { empresa: EmpresaResposta | undefined }) {
+  const cliente = useQueryClient();
+  const [convite, setConvite] = useState<ConviteCriadoResposta | null>(null);
+  const [conta, setConta] = useState<MotoboyTesteResposta | null>(null);
+  const [ultimo, setUltimo] = useState<PedidoDetalhe | null>(null);
+
+  const preparar = useMutation({
+    mutationFn: () => api<DemonstracaoResposta>('/admin/demonstracao', { metodo: 'POST' }),
+    onSuccess: (r) => {
+      setConvite(r.conviteMotoboy);
+      lembrarEmpresa(r.empresa.id);
+      cliente.invalidateQueries({ queryKey: ['empresas'] });
+      cliente.invalidateQueries({ queryKey: ['eu'] });
+    },
+  });
+  const motoboy = useMutation({
+    mutationFn: () => api<MotoboyTesteResposta>('/admin/demonstracao/motoboy-teste', { metodo: 'POST' }),
+    onSuccess: setConta,
+  });
+  const entrega = useMutation({
+    mutationFn: () => api<PedidoDetalhe>('/admin/demonstracao/pedidos', { metodo: 'POST', chave: novaChave() }),
+    onSuccess: setUltimo,
+  });
+
+  return (
+    <section className="flex flex-col gap-4 border-l-4 border-sinal bg-superficie p-5" aria-labelledby="demo-titulo">
+      <div className="flex flex-col gap-1">
+        <h2 id="demo-titulo" className="font-cond text-2xl font-semibold">
+          Empresa de demonstração
+        </h2>
+        <p className="text-[15px] text-concreto">
+          Para testar e apresentar em produção sem misturar com a operação de ninguém: duas lojas fictícias em Cascavel,
+          despacho automático ligado, e todo super admin entra como administrador. Os motoboys são celulares de verdade,
+          com o app.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Botao carregando={preparar.isPending} onClick={() => preparar.mutate()}>
+          {empresa ? 'Atualizar acesso e gerar convite' : 'Preparar demonstração'}
+        </Botao>
+        {empresa && (
+          <>
+            <Botao variante="secundario" carregando={motoboy.isPending} onClick={() => motoboy.mutate()}>
+              Meu motoboy de teste
+            </Botao>
+            <Botao variante="secundario" carregando={entrega.isPending} onClick={() => entrega.mutate()}>
+              Gerar entrega de teste
+            </Botao>
+            <Link
+              to={`/e/${empresa.id}/pedidos`}
+              onClick={() => lembrarEmpresa(empresa.id)}
+              className="inline-flex min-h-10 items-center px-2 text-[15px] text-mercosul underline"
+            >
+              Abrir a demonstração
+            </Link>
+          </>
+        )}
+      </div>
+      <AvisoErro erro={preparar.error ?? motoboy.error ?? entrega.error} />
+      {conta && (
+        <div className="flex flex-col gap-1 rounded-md border border-linha bg-papel p-4 text-[15px]" aria-live="polite">
+          <p>
+            Entre no app do motoboy com <strong>{conta.login}</strong> e a senha{' '}
+            <strong className="font-mono tracking-wide">{conta.senha}</strong>.
+          </p>
+          <p className="text-sm text-concreto">
+            A senha só aparece agora; pedir de novo troca por outra. É uma conta separada da sua porque cada pessoa tem
+            um papel só por empresa, e você já é administrador da demonstração. Abra o turno no app para receber as
+            entregas de teste.
+          </p>
+        </div>
+      )}
+      {ultimo && empresa && (
+        <p className="text-[15px]" aria-live="polite">
+          Entrega de teste{' '}
+          <Link to={`/e/${empresa.id}/pedidos/${ultimo.id}`} className="font-semibold text-mercosul underline">
+            nº {ultimo.numero}
+          </Link>{' '}
+          criada{ultimo.loja ? ` na ${ultimo.loja.nome}` : ''}. Código de entrega:{' '}
+          <strong>{ultimo.codigoEntrega}</strong>. O sistema oferece ao motoboy em turno mais perto da coleta.
+        </p>
+      )}
+      {convite && <LinkConvite convite={convite} nomeEmpresa="Demonstração" aoFechar={() => setConvite(null)} />}
+    </section>
+  );
+}
+
 function LinhaEmpresa({
   empresa,
   aoConvidar,
@@ -149,7 +245,9 @@ function LinhaEmpresa({
     <tr className="border-t border-linha align-middle">
       <td className="py-3 pr-4">
         <span className="font-medium">{empresa.nomeFantasia}</span>
-        <span className="block text-sm text-concreto">{ROTULOS.tipoEmpresa[empresa.tipo]}</span>
+        <span className="block text-sm text-concreto">
+          {empresa.demonstracao ? 'Demonstração (dados fictícios)' : ROTULOS.tipoEmpresa[empresa.tipo]}
+        </span>
       </td>
       <td className="hidden py-3 pr-4 text-sm md:table-cell">{formatarCnpj(empresa.cnpj)}</td>
       <td className="py-3 pr-4 text-sm">{empresa.cidade.nome}</td>
@@ -200,6 +298,8 @@ export function Empresas() {
       {convite && (
         <LinkConvite convite={convite.convite} nomeEmpresa={convite.nome} aoFechar={() => setConvite(null)} />
       )}
+
+      {empresas.data && <Demonstracao empresa={empresas.data.find((e) => e.demonstracao)} />}
 
       <AvisoErro erro={empresas.error} />
       {empresas.data?.length === 0 && !formAberto && (

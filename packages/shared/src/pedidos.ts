@@ -69,6 +69,8 @@ export const TRANSICOES = {
   },
   aceitar: { de: ['atribuido'], para: 'aceito', quem: ['motoboy'], rotulo: 'Aceitar' },
   recusar: { de: ['atribuido'], para: 'pendente', quem: ['motoboy'], rotulo: 'Recusar' },
+  // Só o sistema (despacho automático): oferece o pedido a um motoboy, que aceita ou recusa.
+  oferecer: { de: ['pendente'], para: 'atribuido', quem: [], rotulo: 'Oferta automática' },
   // Só o sistema (cron por minuto), quando o prazo de aceite da empresa acaba sem resposta.
   expirar_aceite: { de: ['atribuido'], para: 'pendente', quem: [], rotulo: 'Prazo de aceite esgotado' },
   // A central pode pular o aceite: há empresas cujos motoboys recebem o pedido pelo WhatsApp.
@@ -158,6 +160,7 @@ export const GRUPOS_STATUS = {
 export const ROTULOS_EVENTO: Record<AcaoPedido | 'criar', string> = {
   criar: 'Pedido criado',
   atribuir: 'Atribuído ao motoboy',
+  oferecer: 'Oferecido automaticamente',
   desatribuir: 'Retirado do motoboy',
   aceitar: 'Motoboy aceitou',
   recusar: 'Motoboy recusou',
@@ -198,6 +201,28 @@ export function fotoObrigatoria(acao: AcaoPedido, regras: Pick<RegrasEntrega, 'f
   if (acao === 'falhar' || acao === 'entregar_sem_codigo') return true;
   return acao === 'entregar' && regras.fotoEntregaObrigatoria;
 }
+
+/**
+ * Como os pedidos sem motoboy chegam até um: a central escolhe (com a sugestão do mais perto
+ * na tela) ou o sistema oferece sozinho, um motoboy de cada vez, até alguém aceitar.
+ */
+export const MODOS_DESPACHO = ['manual', 'automatico'] as const;
+export type ModoDespacho = (typeof MODOS_DESPACHO)[number];
+
+export const ROTULOS_MODO_DESPACHO: Record<ModoDespacho, string> = {
+  manual: 'Manual: a central escolhe o motoboy (com sugestão do mais perto)',
+  automatico: 'Automático: o sistema oferece ao melhor motoboy e passa ao próximo se ele recusar',
+};
+
+export interface RegrasDespacho {
+  modoDespacho: ModoDespacho;
+  /** Segundos que o motoboy tem para responder a uma oferta automática. */
+  ofertaSegundos: number;
+}
+
+/** Opções de tempo para responder à oferta automática (segundos). */
+export const OFERTA_SEGUNDOS = [30, 45, 60, 90, 120, 180] as const;
+export const OFERTA_SEGUNDOS_PADRAO = 60;
 
 /** Opções de prazo de aceite oferecidas no painel (minutos). */
 export const PRAZOS_ACEITE_MIN = [2, 3, 5, 10, 15, 30] as const;

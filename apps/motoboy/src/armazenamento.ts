@@ -1,4 +1,4 @@
-// Token no SecureStore (cofre do Android); na web, localStorage só para desenvolvimento.
+// Token no SecureStore (cofre do Android, Keychain do iPhone); na web, localStorage só para desenvolvimento.
 
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';

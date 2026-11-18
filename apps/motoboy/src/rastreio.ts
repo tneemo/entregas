@@ -2,6 +2,8 @@
 //
 // No Android roda como serviço em primeiro plano, com notificação fixa avisando que a
 // localização está sendo enviada (transparência exigida pela LGPD e pela Play Store).
+// No iPhone o aviso é o indicador azul na barra de status; o sistema só mantém o GPS com a
+// tela apagada se a pessoa escolher "Sempre" (o app pede depois do "Durante o uso").
 // Os pontos vão para uma fila no aparelho e sobem em lotes; sem sinal, esperam.
 // A API recusa pontos sem turno aberto; nesse caso a fila é descartada e o GPS para.
 //
@@ -120,8 +122,11 @@ export async function iniciarRastreio(empresaId: string, nomeEmpresa: string): P
     accuracy: Location.Accuracy.High,
     timeInterval: 15_000,
     distanceInterval: 25,
+    // Só iOS: não deixa o sistema pausar o GPS parado no semáforo, mostra o indicador azul
+    // e trata como navegação de veículo (o iOS calibra o consumo de bateria por isso).
     pausesUpdatesAutomatically: false,
     showsBackgroundLocationIndicator: true,
+    activityType: Location.ActivityType.AutomotiveNavigation,
     foregroundService: {
       notificationTitle: 'Você está em turno',
       notificationBody: `Sua localização é enviada à ${nomeEmpresa} até você encerrar o turno.`,

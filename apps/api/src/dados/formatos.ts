@@ -31,5 +31,6 @@ export function empresaResposta(
     status: e.status,
     cidade: { id: cidade.id, nome: cidade.nome, uf: cidade.uf },
     criadoEm: e.criadoEm.toISOString(),
+    demonstracao: e.demonstracao,
   };
 }

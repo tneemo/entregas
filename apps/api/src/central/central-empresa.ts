@@ -21,6 +21,13 @@ import {
   type PosicaoMotoboy,
   type StatusPedido,
 } from '@entregas/shared';
+import { criarDb } from '../db/index.ts';
+import { expirarAceites } from '../dados/escopo-pedidos.ts';
+import { despacharPendentes } from '../dados/ofertas.ts';
+import { avisos, notificar } from '../notificacoes.ts';
+
+/** Com pedido na fila e ninguém disponível, tenta de novo a cada tanto (alguém pode ficar livre ou chegar perto). */
+const NOVA_RODADA_MS = 30_000;
 
 type Anexo =
   | { tipo: 'painel' }
@@ -68,6 +75,8 @@ function enviar(ws: WebSocket, mensagem: MensagemCentral | MensagemRastreio) {
 
 export class CentralEmpresa extends DurableObject<Env> {
   private readonly sql: SqlStorage;
+  /** Rodadas de despacho uma de cada vez: duas ao mesmo tempo poderiam oferecer o mesmo motoboy. */
+  private rodada: Promise<unknown> = Promise.resolve();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -191,6 +200,52 @@ export class CentralEmpresa extends DurableObject<Env> {
       // Pedido terminou: nada mais vai mudar, libera a conexão.
       if (statusFinal(status)) ws.close(1000, 'Pedido concluído');
     }
+  }
+
+  /**
+   * Despacho automático desta empresa: vence as ofertas sem resposta, oferece os pedidos da fila
+   * e agenda o alarme para o próximo prazo. Chamado ao criar pedido, quando um motoboy recusa ou
+   * abre o turno, pelo cron de cada minuto e pelo próprio alarme. No modo manual não oferece nada.
+   */
+  async despachar(empresaId: string): Promise<number> {
+    const vez = this.rodada.then(() => this.rodadaDeDespacho(empresaId));
+    this.rodada = vez.catch(() => undefined);
+    return vez;
+  }
+
+  private async rodadaDeDespacho(empresaId: string): Promise<number> {
+    await this.ctx.storage.put('empresaId', empresaId);
+    const db = criarDb(this.env.DB);
+    const agora = new Date();
+
+    const voltaram = await expirarAceites(db, agora, empresaId);
+    for (const v of voltaram) await this.mudouPedido(v.pedidoId, 'pendente', null);
+
+    const posicoes = Object.fromEntries(this.posicoes().map((p) => [p.vinculoId, p]));
+    const rodada = await despacharPendentes(db, empresaId, posicoes, agora);
+    for (const o of rodada.oferecidos) await this.mudouPedido(o.pedidoId, 'atribuido', o.vinculoId);
+
+    await notificar(this.env, db, [
+      ...voltaram.map((v) => avisos.prazoEsgotado(v.usuarioId, empresaId, { id: v.pedidoId, numero: v.numero })),
+      ...rodada.oferecidos.map((o) => avisos.oferta(o.usuarioId, empresaId, o)),
+    ]);
+
+    // Próximo alarme: o prazo mais perto, ou uma nova tentativa se ficou pedido sem ninguém.
+    const momentos = [
+      rodada.proximoPrazo?.getTime(),
+      rodada.automatico && rodada.restamPendentes ? agora.getTime() + NOVA_RODADA_MS : undefined,
+    ].filter((t): t is number => t !== undefined);
+    if (rodada.automatico && momentos.length > 0) {
+      await this.ctx.storage.setAlarm(Math.max(Math.min(...momentos), Date.now() + 1000));
+    } else {
+      await this.ctx.storage.deleteAlarm();
+    }
+    return rodada.oferecidos.length;
+  }
+
+  override async alarm(): Promise<void> {
+    const empresaId = await this.ctx.storage.get<string>('empresaId');
+    if (empresaId) await this.despachar(empresaId);
   }
 
   override async webSocketMessage(): Promise<void> {

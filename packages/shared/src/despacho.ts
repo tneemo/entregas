@@ -104,3 +104,66 @@ export function sugerirMotoboys(
     })
     .sort((a, b) => a.custo - b.custo || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
+
+// Despacho automático --------------------------------------------------------
+
+/** Mais entregas na mão do que isto e o motoboy não recebe oferta nova. */
+export const MAX_PEDIDOS_POR_MOTOBOY = 3;
+
+export interface CandidatoOferta extends CandidatoDespacho {
+  /** Motoboy fixo desta loja; null = livre, roda a cidade toda. */
+  lojaId: string | null;
+  /** Já tem um pedido esperando a resposta dele: uma oferta de cada vez. */
+  ofertaPendente: boolean;
+}
+
+export interface PedidoParaOferta {
+  coleta: Coordenadas | null;
+  lojaId: string | null;
+  /** A loja do pedido tem algum motoboy fixo cadastrado (em turno ou não). */
+  lojaTemFixos: boolean;
+  /** Sem fixo disponível, oferece aos livres em vez de esperar um fixo. */
+  transbordo: boolean;
+  /** Vínculos que já recusaram ou deixaram este pedido passar sem resposta. */
+  recusaram: ReadonlySet<string>;
+}
+
+export interface EscolhaOferta extends SugestaoDespacho {
+  grupo: 'fixo' | 'livre';
+}
+
+/**
+ * Quem recebe a próxima oferta de um pedido, ou null se ninguém pode agora (o pedido espera).
+ *
+ * - Pedido de loja com fixos: vai para o melhor fixo dela. Com todos ocupados ou fora do turno,
+ *   vai para os livres só se a loja aceita transbordo.
+ * - Pedido sem loja, ou de loja sem fixos: vai para o melhor livre.
+ * - Fixo de uma loja nunca recebe pedido de outra.
+ * - Ninguém recebe duas ofertas ao mesmo tempo, nem de novo um pedido que já recusou.
+ */
+export function escolherParaOferta(
+  pedido: PedidoParaOferta,
+  motoboys: readonly CandidatoOferta[],
+  posicoes: Readonly<Record<string, PosicaoCandidato | undefined>>,
+  agora = Date.now(),
+): EscolhaOferta | null {
+  const disponiveis = motoboys.filter(
+    (m) =>
+      m.emTurno && !m.ofertaPendente && m.pedidosAtivos < MAX_PEDIDOS_POR_MOTOBOY && !pedido.recusaram.has(m.vinculoId),
+  );
+  const melhor = (grupo: 'fixo' | 'livre', lista: CandidatoOferta[]): EscolhaOferta | null => {
+    const [primeiro] = sugerirMotoboys(pedido.coleta, lista, posicoes, agora);
+    return primeiro ? { ...primeiro, grupo } : null;
+  };
+  const livres = disponiveis.filter((m) => m.lojaId === null);
+
+  if (pedido.lojaId && pedido.lojaTemFixos) {
+    const fixo = melhor(
+      'fixo',
+      disponiveis.filter((m) => m.lojaId === pedido.lojaId),
+    );
+    if (fixo) return fixo;
+    return pedido.transbordo ? melhor('livre', livres) : null;
+  }
+  return melhor('livre', livres);
+}

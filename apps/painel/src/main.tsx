@@ -17,6 +17,7 @@ import { NovoPedido } from './telas/NovoPedido.tsx';
 import { PedidoDetalhe } from './telas/PedidoDetalhe.tsx';
 import { DadosEmpresa } from './telas/DadosEmpresa.tsx';
 import { VisaoGeral } from './telas/VisaoGeral.tsx';
+import { Lojas } from './telas/Lojas.tsx';
 import './tema.ts';
 import { TelaPublica } from './telas/Entrar.tsx';
 
@@ -77,6 +78,7 @@ createRoot(document.getElementById('raiz')!).render(
                 }
               />
               <Route path="visao-geral" element={<VisaoGeral />} />
+              <Route path="lojas" element={<Lojas />} />
               <Route path="equipe" element={<Equipe />} />
               <Route path="empresa" element={<DadosEmpresa />} />
             </Route>

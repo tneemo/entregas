@@ -1,7 +1,7 @@
 // Formatos de resposta da API, compartilhados com o painel e o app.
 
 import type { Papel, StatusEmpresa, StatusVinculo, TipoEmpresa, TipoVinculo } from './papeis.ts';
-import type { AcaoPedido, FormaPagamento, RegrasEntrega, StatusPedido, TipoFoto } from './pedidos.ts';
+import type { AcaoPedido, FormaPagamento, RegrasDespacho, RegrasEntrega, StatusPedido, TipoFoto } from './pedidos.ts';
 import type { Coordenadas, Localizacao } from './localizacao.ts';
 
 export interface ErroResposta {
@@ -51,6 +51,8 @@ export interface EmpresaResposta {
   status: StatusEmpresa;
   cidade: { id: string; nome: string; uf: string };
   criadoEm: string;
+  /** Empresa de demonstração da plataforma: dados fictícios, aberta aos super admins. */
+  demonstracao: boolean;
 }
 
 export interface ConviteCriadoResposta {
@@ -59,6 +61,21 @@ export interface ConviteCriadoResposta {
   /** Caminho relativo do link (ex.: /convite/abc). Só aparece na criação. */
   caminho: string;
   expiraEm: string;
+}
+
+/** POST /admin/demonstracao: empresa pronta e um convite para alguém entrar como motoboy de teste. */
+export interface DemonstracaoResposta {
+  empresa: EmpresaResposta;
+  conviteMotoboy: ConviteCriadoResposta;
+}
+
+/** POST /admin/demonstracao/motoboy-teste: login para o app (a senha só aparece aqui). */
+export interface MotoboyTesteResposta {
+  nome: string;
+  /** Telefone fictício, formatado: é o que se digita no app. */
+  login: string;
+  email: string;
+  senha: string;
 }
 
 export interface CriarEmpresaResposta {
@@ -90,6 +107,19 @@ export interface MembroResposta {
   tipoVinculo: TipoVinculo | null;
   entrouEm: string;
   usuario: { id: string; nome: string; email: string | null; telefone: string | null };
+  /** Motoboy fixo desta loja; null = livre. */
+  lojaId: string | null;
+}
+
+export interface LojaResposta {
+  id: string;
+  nome: string;
+  telefone: string | null;
+  endereco: EnderecoResposta;
+  transbordo: boolean;
+  ativa: boolean;
+  /** Motoboys fixos (ativos) desta loja. */
+  fixos: { vinculoId: string; nome: string }[];
 }
 
 // Pedidos --------------------------------------------------------------------
@@ -113,7 +143,7 @@ export interface LocalizarResposta {
   localizacao: Localizacao | null;
 }
 
-export interface DadosEmpresaResposta extends EmpresaResposta, RegrasEntrega {
+export interface DadosEmpresaResposta extends EmpresaResposta, RegrasEntrega, RegrasDespacho {
   endereco: EnderecoResposta | null;
 }
 
@@ -126,6 +156,8 @@ export interface MotoboyResumo {
   emTurno: boolean;
   /** Tem o app aberto em algum celular com notificação ligada: fica sabendo do pedido na hora. */
   recebeNotificacao: boolean;
+  /** Fixo desta loja; null = livre. */
+  lojaId: string | null;
 }
 
 /** O que vai junto na notificação, para o app abrir a tela certa ao tocar. */
@@ -164,6 +196,10 @@ export interface PedidoResumo {
   valorACobrarCentavos: number;
   /** Atribuído e aguardando aceite: depois desta hora volta sozinho para a fila. */
   aceiteAte: string | null;
+  /** Loja atendida de onde sai o pedido. */
+  loja: { id: string; nome: string } | null;
+  /** Está com o motoboy por oferta automática (aguardando ele aceitar). */
+  ofertaAutomatica: boolean;
 }
 
 export interface EventoPedidoResposta {
