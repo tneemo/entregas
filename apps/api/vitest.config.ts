@@ -21,6 +21,11 @@ export default defineConfig(async () => {
     ],
     test: {
       setupFiles: ['./test/preparar.ts'],
+      // Cada teste sobe requisições de verdade no workerd (Worker, D1, Durable Object, WebSocket).
+      // Na máquina compartilhada do CI, com os 13 arquivos em paralelo, já vimos teste de 60 ms
+      // levar 2 s; 5 s (o padrão) derrubava o fluxo de rastreio, que faz ~15 idas e voltas.
+      // Teste travado de verdade continua falhando: as esperas por mensagem têm limite próprio de 3 s.
+      testTimeout: 20_000,
     },
   };
 });

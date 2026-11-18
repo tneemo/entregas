@@ -214,7 +214,6 @@ export class CentralEmpresa extends DurableObject<Env> {
   }
 
   private async rodadaDeDespacho(empresaId: string): Promise<number> {
-    await this.ctx.storage.put('empresaId', empresaId);
     const db = criarDb(this.env.DB);
     const agora = new Date();
 
@@ -235,12 +234,27 @@ export class CentralEmpresa extends DurableObject<Env> {
       rodada.proximoPrazo?.getTime(),
       rodada.automatico && rodada.restamPendentes ? agora.getTime() + NOVA_RODADA_MS : undefined,
     ].filter((t): t is number => t !== undefined);
-    if (rodada.automatico && momentos.length > 0) {
-      await this.ctx.storage.setAlarm(Math.max(Math.min(...momentos), Date.now() + 1000));
-    } else {
-      await this.ctx.storage.deleteAlarm();
-    }
+    await this.agendar(empresaId, rodada.automatico && momentos.length > 0 ? Math.min(...momentos) : null);
     return rodada.oferecidos.length;
+  }
+
+  /**
+   * Grava o alarme só quando ele muda. Gravar no armazenamento do DO segura as mensagens de
+   * WebSocket que estão saindo até a gravação confirmar; como a rodada roda depois de toda
+   * ação (inclusive no modo manual, onde não faz nada), gravar sempre atrasaria o tempo real.
+   */
+  private async agendar(empresaId: string, quando: number | null) {
+    const atual = await this.ctx.storage.getAlarm();
+    if (quando === null) {
+      if (atual !== null) await this.ctx.storage.deleteAlarm();
+      return;
+    }
+    if ((await this.ctx.storage.get<string>('empresaId')) !== empresaId) {
+      await this.ctx.storage.put('empresaId', empresaId);
+    }
+    const alvo = Math.max(quando, Date.now() + 1000);
+    // Diferença de menos de 1 s não justifica regravar.
+    if (atual === null || Math.abs(atual - alvo) >= 1000) await this.ctx.storage.setAlarm(alvo);
   }
 
   override async alarm(): Promise<void> {
